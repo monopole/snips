@@ -56,7 +56,7 @@ func reportReviews(client *github.Client, ctx context.Context) {
 		}
 	results, _, err := client.Search.Issues(
 		ctx,
-		"-author:monopole commenter:monopole updated:2019-11-25..2019-12-01",
+		"-author:monopole commenter:monopole updated:2019-12-09..2019-12-15",
 		opts)
 	if err != nil {
 		log.Fatal(err)
