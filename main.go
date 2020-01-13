@@ -42,6 +42,8 @@ e.g.
 	}
 	//q.reportOrgs(client)
 	//q.reportUser(client, ctx)
+	fmt.Print("## Theme\n\n> _TODO_\n")
+	q.reportIssuesFiled()
 	q.reportReviews()
 	q.reportPrs()
 }
@@ -85,7 +87,33 @@ func (q *questioner) reportReviews() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("## Reviews")
+	fmt.Print("\n## Reviews\n\n")
+	for _, r := range results.Issues {
+		q.printPrLink(r.GetTitle(), r.GetNumber(), r.GetUpdatedAt())
+	}
+}
+
+func (q *questioner) reportIssuesFiled() {
+	results, _, err := q.client.Search.Issues(
+		q.ctx,
+		fmt.Sprintf(
+			"author:%s created:%s..%s",
+			q.user,
+			q.dateStart.Format("2006-01-02"),
+			q.dateEnd.Format("2006-01-02")),
+		&github.SearchOptions{
+			Sort:      "",
+			Order:     "",
+			TextMatch: false,
+			ListOptions: github.ListOptions{
+				Page:    0,
+				PerPage: 100,
+			},
+		})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Print("\n## Filed\n\n")
 	for _, r := range results.Issues {
 		q.printPrLink(r.GetTitle(), r.GetNumber(), r.GetUpdatedAt())
 	}
@@ -112,7 +140,7 @@ func (q *questioner) reportPrs() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("## PRS")
+	fmt.Print("\n## PRS\n\n")
 	for _, r := range results {
 		if r.GetUser().GetLogin() == q.user /* TODO add date check */ {
 			q.printPrLink(
