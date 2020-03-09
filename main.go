@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v28/github"
@@ -12,8 +14,6 @@ import (
 )
 
 type questioner struct {
-	ghOrg     string
-	ghRepo    string
 	user      string
 	dateStart time.Time
 	dateEnd   time.Time
@@ -21,24 +21,34 @@ type questioner struct {
 	ctx       context.Context
 }
 
+type ghRepo struct {
+	org  string
+	name string
+}
+
+// TODO: get this from command line
+var myRepos = []ghRepo{
+	{"kubernetes-sigs", "kustomize"},
+	{"kubernetes-sigs", "cli-utils"},
+	{"GoogleContainerTools", "kpt"},
+}
+
 func main() {
-	if len(os.Args) < 7 {
+	if len(os.Args) < 5 {
 		fmt.Print(`usage:
-  snips {githubOrg} {githubRepo} {user} {dateStart} {dateEnd} {githubAuthToken}
+  snips {user} {dateStart} {dateEnd} {githubAuthToken}
 e.g.
-  snips kubernetes-sigs kustomize monopole 2019-11-25 2019-12-01 deadbeef0000deadbeef
+  snips monopole 2020-02-02 2020-02-08 deadbeef0000deadbeef
 `)
 		os.Exit(1)
 	}
 	ctx := context.Background()
 	q := questioner{
-		ghOrg:     os.Args[1],
-		ghRepo:    os.Args[2],
-		user:      os.Args[3],
-		dateStart: parseDate(os.Args[4]),
-		dateEnd:   parseDate(os.Args[5]),
+		user:      os.Args[1],
+		dateStart: parseDate(os.Args[2]),
+		dateEnd:   parseDate(os.Args[3]),
 		ctx:       ctx,
-		client:    makeClient(ctx, os.Args[6]),
+		client:    makeClient(ctx, os.Args[4]),
 	}
 	//q.reportOrgs(client)
 	//q.reportUser(client, ctx)
@@ -87,10 +97,19 @@ func (q *questioner) reportReviews() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Print("\n## Reviews\n\n")
-	for _, r := range results.Issues {
-		q.printPrLink(r.GetTitle(), r.GetNumber(), r.GetUpdatedAt())
+	q.printIssues("Reviews", results.Issues)
+}
+
+func (q *questioner) printIssues(title string, issues []github.Issue) {
+	fmt.Printf("\n## %s\n\n", title)
+	for repo, issueList := range convertToIssueMap(issues) {
+		fmt.Printf("#### %s\n\n", repo)
+		for _, issue := range issueList {
+			q.printIssueLink(issue)
+		}
+		fmt.Println()
 	}
+	fmt.Println()
 }
 
 func (q *questioner) reportIssuesFiled() {
@@ -113,56 +132,94 @@ func (q *questioner) reportIssuesFiled() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Print("\n## Filed\n\n")
-	for _, r := range results.Issues {
-		q.printPrLink(r.GetTitle(), r.GetNumber(), r.GetUpdatedAt())
-	}
+	q.printIssues("Filed", results.Issues)
 }
 
 // Alternative query:
 //  author:monopole is:pr merged:2019-11-25..2019-12-01
 func (q *questioner) reportPrs() {
-	results, _, err := q.client.PullRequests.List(
-		q.ctx,
-		q.ghOrg,
-		q.ghRepo,
-		&github.PullRequestListOptions{
-			State:     "closed",
-			Head:      "",
-			Base:      "",
-			Sort:      "",
-			Direction: "desc",
-			ListOptions: github.ListOptions{
-				Page:    0,
-				PerPage: 100,
-			},
-		})
-	if err != nil {
-		log.Fatal(err)
-	}
 	fmt.Print("\n## PRS\n\n")
-	for _, r := range results {
-		if r.GetUser().GetLogin() == q.user /* TODO add date check */ {
-			q.printPrLink(
-				r.GetTitle(), r.GetNumber(), r.GetMergedAt())
+	for _, repo := range myRepos {
+		prList, _, err := q.client.PullRequests.List(
+			q.ctx,
+			repo.org,
+			repo.name,
+			&github.PullRequestListOptions{
+				State:     "closed",
+				Head:      "",
+				Base:      "",
+				Sort:      "",
+				Direction: "desc",
+				ListOptions: github.ListOptions{
+					Page:    0,
+					PerPage: 100,
+				},
+			})
+		if err != nil {
+			log.Fatal(err)
+		}
+		prList = q.filterPrs(prList)
+		if len(prList) > 0 {
+			fmt.Printf("#### %s\n\n", repo.name)
+			for _, pr := range prList {
+				q.printPrLink(pr)
+			}
+			fmt.Println()
 		}
 	}
 }
 
-func (q *questioner) printPrLink(title string, prNum int, date time.Time) {
+func (q *questioner) filterPrs(list []*github.PullRequest) []*github.PullRequest {
+	var result []*github.PullRequest
+	for _, pr := range list {
+		if pr.GetUser().GetLogin() == q.user /* TODO add date check */ {
+			result = append(result, pr)
+		}
+	}
+	return result
+}
+
+func (q *questioner) printPrLink(pr *github.PullRequest) {
+	fmt.Printf(" - %s [%s](%s)\n",
+		pr.GetMergedAt().Format("2006-01-02"), pr.GetTitle(), pr.GetHTMLURL())
+}
+
+func convertToIssueMap(issues []github.Issue) map[string][]github.Issue {
+	result := make(map[string][]github.Issue)
+	for _, issue := range issues {
+		issueUrl, err := url.Parse(issue.GetHTMLURL())
+		if err != nil {
+			log.Fatal(err)
+		}
+		path := strings.Split(issueUrl.Path, "/")
+		repo := path[1]
+		var list []github.Issue
+		if oldList, ok := result[repo]; ok {
+			list = append(oldList, issue)
+		} else {
+			list = []github.Issue{issue}
+		}
+		result[repo] = list
+	}
+	return result
+}
+
+func (q *questioner) printIssueLink(issue github.Issue) {
 	fmt.Printf(
-		" - %s [%s](https://github.com/%s/%s/pull/%d)\n",
-		date.Format("2006-01-02"), title, q.ghOrg, q.ghRepo, prNum)
+		" - %s [%s](%s)\n",
+		issue.GetUpdatedAt().Format("2006-01-02"), *issue.Title, *issue.HTMLURL)
 }
 
 func (q *questioner) reportOrgs() {
-	orgs, _, err := q.client.Organizations.List(
-		q.ctx, q.ghOrg, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for i, organization := range orgs {
-		fmt.Printf("%v. %v\n", i+1, organization.GetLogin())
+	for _, repo := range myRepos {
+		orgs, _, err := q.client.Organizations.List(
+			q.ctx, repo.org, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for i, organization := range orgs {
+			fmt.Printf("%v. %v\n", i+1, organization.GetLogin())
+		}
 	}
 }
 
