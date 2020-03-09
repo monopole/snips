@@ -192,7 +192,7 @@ func convertToIssueMap(issues []github.Issue) map[string][]github.Issue {
 			log.Fatal(err)
 		}
 		path := strings.Split(issueUrl.Path, "/")
-		repo := path[1]
+		repo := path[2]
 		var list []github.Issue
 		if oldList, ok := result[repo]; ok {
 			list = append(oldList, issue)
