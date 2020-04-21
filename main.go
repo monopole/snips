@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -38,7 +39,7 @@ func main() {
 		fmt.Print(`usage:
   snips {user} {dateStart} {dateEnd} {githubAuthToken}
 e.g.
-  snips monopole 2020-02-02 2020-02-08 deadbeef0000deadbeef
+  go run . monopole 2020-04-06 2020-04-12 deadbeef0000deadbeef
 `)
 		os.Exit(1)
 	}
@@ -132,7 +133,7 @@ func (q *questioner) reportIssuesFiled() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	q.printIssues("Filed", results.Issues)
+	q.printIssues("Issues filed or commented on", results.Issues)
 }
 
 // Alternative query:
@@ -160,6 +161,7 @@ func (q *questioner) reportPrs() {
 		}
 		prList = q.filterPrs(prList)
 		if len(prList) > 0 {
+			//prList = sortPrsDate(prList)
 			fmt.Printf("#### %s\n\n", repo.name)
 			for _, pr := range prList {
 				q.printPrLink(pr)
@@ -167,6 +169,13 @@ func (q *questioner) reportPrs() {
 			fmt.Println()
 		}
 	}
+}
+
+func sortPrsDate(list []*github.PullRequest) []*github.PullRequest {
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].MergedAt.After(*list[j].MergedAt)
+	})
+	return list
 }
 
 func (q *questioner) filterPrs(list []*github.PullRequest) []*github.PullRequest {
@@ -185,8 +194,11 @@ func (q *questioner) printPrLink(pr *github.PullRequest) {
 }
 
 func convertToIssueMap(issues []github.Issue) map[string][]github.Issue {
-	result := make(map[string][]github.Issue)
+	almost := make(map[string][]github.Issue)
 	for _, issue := range issues {
+		if issue.IsPullRequest() {
+			continue
+		}
 		issueUrl, err := url.Parse(issue.GetHTMLURL())
 		if err != nil {
 			log.Fatal(err)
@@ -194,14 +206,25 @@ func convertToIssueMap(issues []github.Issue) map[string][]github.Issue {
 		path := strings.Split(issueUrl.Path, "/")
 		repo := path[2]
 		var list []github.Issue
-		if oldList, ok := result[repo]; ok {
+		if oldList, ok := almost[repo]; ok {
 			list = append(oldList, issue)
 		} else {
 			list = []github.Issue{issue}
 		}
-		result[repo] = list
+		almost[repo] = list
+	}
+	result := make(map[string][]github.Issue)
+	for repo, issueList := range almost {
+		result[repo] = sortIssuesByDate(issueList)
 	}
 	return result
+}
+
+func sortIssuesByDate(list []github.Issue) []github.Issue {
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].GetUpdatedAt().After(list[j].GetUpdatedAt())
+	})
+	return list
 }
 
 func (q *questioner) printIssueLink(issue github.Issue) {
