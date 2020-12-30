@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v33/github"
@@ -35,4 +37,31 @@ func MakeClient(ctx context.Context, token string) *github.Client {
 	)
 	tc := oauth2.NewClient(ctx, ts)
 	return github.NewClient(tc)
+}
+
+func MapRepoToIssueList(issues []*github.Issue) map[string][]*github.Issue {
+	almost := make(map[string][]*github.Issue)
+	for _, issue := range issues {
+		if issue.IsPullRequest() {
+			continue
+		}
+		issueUrl, err := url.Parse(issue.GetHTMLURL())
+		if err != nil {
+			log.Fatal(err)
+		}
+		path := strings.Split(issueUrl.Path, "/")
+		repo := path[2]
+		var list []*github.Issue
+		if oldList, ok := almost[repo]; ok {
+			list = append(oldList, issue)
+		} else {
+			list = []*github.Issue{issue}
+		}
+		almost[repo] = list
+	}
+	result := make(map[string][]*github.Issue)
+	for repo, issueList := range almost {
+		result[repo] = sortIssuesByDateOfUpdate(issueList)
+	}
+	return result
 }

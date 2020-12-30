@@ -4,11 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"snips/internal"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/google/go-github/v33/github"
@@ -58,115 +55,109 @@ e.g.
 		ctx:       ctx,
 		client:    internal.MakeClient(ctx, token),
 	}
-	q.reportOrgs()
-	q.reportUser()
-	//fmt.Print("## Theme\n\n> _TODO_\n")
-	//q.reportIssuesFiled()
-	//q.reportReviews()
-	//q.reportPrs()
+	//q.reportOrgs()
+	//q.reportUser()
+	fmt.Print("## Theme\n\n> _TODO_\n")
+
+	//internal.PrintIssues("Issues filed or commented on", q.queryIssuesCreated())
+
+	//internal.PrintIssues("Reviews", q.queryReviews())
+
+	q.reportPrs()
 }
 
-
-// The query excludes the user as the author, looking
-// for the user only in comments.
-func (q *questioner) reportReviews() {
-	results, _, err := q.client.Search.Issues(
-		q.ctx,
-		fmt.Sprintf(
-			"-author:%s commenter:%s updated:%s..%s",
-			q.user, q.user,
-			q.dateStart.Format("2006-01-02"),
-			q.dateEnd.Format("2006-01-02")),
-		&github.SearchOptions{
-			Sort:      "",
-			Order:     "",
-			TextMatch: false,
-			ListOptions: github.ListOptions{
-				Page:    0,
-				PerPage: 100,
-			},
-		})
-	if err != nil {
-		log.Fatal(err)
-	}
-	q.printIssues("Reviews", results.Issues)
-}
-
-func (q *questioner) printIssues(title string, issues []*github.Issue) {
-	fmt.Printf("\n## %s\n\n", title)
-	for repo, issueList := range convertToIssueMap(issues) {
-		fmt.Printf("#### %s\n\n", repo)
-		for _, issue := range issueList {
-			q.printIssueLink(issue)
-		}
-		fmt.Println()
-	}
-	fmt.Println()
-}
-
-func (q *questioner) reportIssuesFiled() {
-	results, _, err := q.client.Search.Issues(
-		q.ctx,
-		fmt.Sprintf(
-			"author:%s created:%s..%s",
-			q.user,
-			q.dateStart.Format("2006-01-02"),
-			q.dateEnd.Format("2006-01-02")),
-		&github.SearchOptions{
-			Sort:      "",
-			Order:     "",
-			TextMatch: false,
-			ListOptions: github.ListOptions{
-				Page:    0,
-				PerPage: 100,
-			},
-		})
-	if err != nil {
-		log.Fatal(err)
-	}
-	q.printIssues("Issues filed or commented on", results.Issues)
-}
-
-// Alternative query:
-//  author:monopole is:pr merged:2019-11-25..2019-12-01
-func (q *questioner) reportPrs() {
-	fmt.Print("\n## PRS\n\n")
-	for _, repo := range myRepos {
-		prList, _, err := q.client.PullRequests.List(
+func (q *questioner) queryReviews() (issues []*github.Issue) {
+	opts := internal.MakeSearchOptions()
+	for {
+		results, resp, err := q.client.Search.Issues(
 			q.ctx,
-			repo.org,
-			repo.name,
-			&github.PullRequestListOptions{
-				State:     "closed",
-				Head:      "",
-				Base:      "",
-				Sort:      "",
-				Direction: "desc",
-				ListOptions: github.ListOptions{
-					Page:    0,
-					PerPage: 100,
-				},
-			})
+			// The query excludes the user as the author, looking
+			// for the user only in comments.
+			fmt.Sprintf(
+				"-author:%s commenter:%s updated:%s..%s",
+				q.user, q.user,
+				q.dateStart.Format("2006-01-02"),
+				q.dateEnd.Format("2006-01-02")),
+			opts)
 		if err != nil {
 			log.Fatal(err)
 		}
-		prList = q.filterPrs(prList)
-		if len(prList) > 0 {
+		issues = append(issues, results.Issues...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+	return
+}
+
+func (q *questioner) queryIssuesCreated() (issues []*github.Issue) {
+	opts := internal.MakeSearchOptions()
+	for {
+		results, resp, err := q.client.Search.Issues(
+			q.ctx,
+			fmt.Sprintf(
+				"author:%s created:%s..%s",
+				q.user,
+				q.dateStart.Format("2006-01-02"),
+				q.dateEnd.Format("2006-01-02")),
+			opts)
+		if err != nil {
+			log.Fatal(err)
+		}
+		issues = append(issues, results.Issues...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+	return
+}
+
+func (q *questioner) reportPrs() {
+	fmt.Print("\n## PRS\n\n")
+	for _, repo := range myRepos {
+		prs := q.queryPrs(repo)
+		if len(prs) > 0 {
 			//prList = sortPrsDate(prList)
 			fmt.Printf("#### %s\n\n", repo.name)
-			for _, pr := range prList {
-				q.printPrLink(pr)
+			for _, pr := range prs {
+				internal.PrintPrLink(pr)
 			}
 			fmt.Println()
 		}
 	}
 }
 
-func sortPrsDate(list []*github.PullRequest) []*github.PullRequest {
-	sort.Slice(list, func(i, j int) bool {
-		return list[i].MergedAt.After(*list[j].MergedAt)
-	})
-	return list
+// Alternative query:
+//  author:monopole is:pr merged:2019-11-25..2019-12-01
+func (q *questioner) queryPrs(repo ghRepo) (prs []*github.PullRequest) {
+	lOpts := internal.MakeListOptions()
+	for {
+		prList, resp, err := q.client.PullRequests.List(
+			q.ctx,
+			repo.org,
+			repo.name,
+			&github.PullRequestListOptions{
+				State:       "closed",
+				Head:        q.user + ":master",
+				Base:        "",
+				Sort:        "created",
+				Direction:   "desc",
+				ListOptions: lOpts,
+			})
+		if err != nil {
+			log.Fatal(err)
+		}
+		prs = append(prs, prList...)
+		if resp.NextPage == 0 {
+			break
+		}
+		fmt.Print(".")
+		lOpts.Page = resp.NextPage
+	}
+	fmt.Println()
+	return
 }
 
 func (q *questioner) filterPrs(list []*github.PullRequest) []*github.PullRequest {
@@ -179,63 +170,15 @@ func (q *questioner) filterPrs(list []*github.PullRequest) []*github.PullRequest
 	return result
 }
 
-func (q *questioner) printPrLink(pr *github.PullRequest) {
-	fmt.Printf(" - %s [%s](%s)\n",
-		pr.GetMergedAt().Format("2006-01-02"), pr.GetTitle(), pr.GetHTMLURL())
-}
-
-func convertToIssueMap(issues []*github.Issue) map[string][]*github.Issue {
-	almost := make(map[string][]*github.Issue)
-	for _, issue := range issues {
-		if issue.IsPullRequest() {
-			continue
-		}
-		issueUrl, err := url.Parse(issue.GetHTMLURL())
-		if err != nil {
-			log.Fatal(err)
-		}
-		path := strings.Split(issueUrl.Path, "/")
-		repo := path[2]
-		var list []*github.Issue
-		if oldList, ok := almost[repo]; ok {
-			list = append(oldList, issue)
-		} else {
-			list = []*github.Issue{issue}
-		}
-		almost[repo] = list
-	}
-	result := make(map[string][]*github.Issue)
-	for repo, issueList := range almost {
-		result[repo] = sortIssuesByDate(issueList)
-	}
-	return result
-}
-
-func sortIssuesByDate(list []*github.Issue) []*github.Issue {
-	sort.Slice(list, func(i, j int) bool {
-		return list[i].GetUpdatedAt().After(list[j].GetUpdatedAt())
-	})
-	return list
-}
-
-func (q *questioner) printIssueLink(issue *github.Issue) {
-	fmt.Printf(
-		" - %s [%s](%s)\n",
-		issue.GetUpdatedAt().Format("2006-01-02"), *issue.Title, *issue.HTMLURL)
-}
-
 func (q *questioner) reportOrgs() {
-		orgs, _, err := q.client.Organizations.List(
-			q.ctx, "", &github.ListOptions{
-				Page:    0,
-				PerPage: 100,
-			})
-		if err != nil {
-			log.Fatal(err)
-		}
-		for i, organization := range orgs {
-			fmt.Printf("%v. %v\n", i+1, organization.GetLogin())
-		}
+	opts := internal.MakeListOptions()
+	orgs, _, err := q.client.Organizations.List(q.ctx, "", &opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for i, organization := range orgs {
+		fmt.Printf("%v. %v\n", i+1, organization.GetLogin())
+	}
 }
 
 func (q *questioner) reportUser() {
