@@ -1,13 +1,22 @@
-package main
+package internal
 
 // Not using this stuff, but want to be sure it compiles.
 
 import (
+	"context"
 	"fmt"
 	"github.com/google/go-github/v33/github"
 	"log"
-	"snips/internal"
+	"time"
 )
+
+type oldQuestioner struct {
+	user      string
+	dateStart time.Time
+	dateEnd   time.Time
+	client    *github.Client
+	ctx       context.Context
+}
 
 type ghRepo struct {
 	org  string
@@ -24,7 +33,7 @@ var myRepos = []ghRepo{
 }
 
 // Not using this any more
-func (q *questioner) reportPrs() {
+func (q *oldQuestioner) reportPrs() {
 	fmt.Print("\n## PRS\n\n")
 	for _, repo := range myRepos {
 		prs := q.queryPrs(repo)
@@ -32,15 +41,15 @@ func (q *questioner) reportPrs() {
 			//prList = sortPrsDate(prList)
 			fmt.Printf("#### %s\n\n", repo.name)
 			for _, pr := range prs {
-				internal.PrintPrLink(pr)
+				PrintPrLink(pr)
 			}
 			fmt.Println()
 		}
 	}
 }
 
-func (q *questioner) queryPrs(repo ghRepo) (prs []*github.PullRequest) {
-	lOpts := internal.MakeListOptions()
+func (q *oldQuestioner) queryPrs(repo ghRepo) (prs []*github.PullRequest) {
+	lOpts := MakeListOptions()
 	for {
 		prList, resp, err := q.client.PullRequests.List(
 			q.ctx,
