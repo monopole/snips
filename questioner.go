@@ -3,11 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"snips/internal"
-	"time"
-
 	"github.com/google/go-github/v33/github"
+	"github.com/monopole/snips/internal"
+	"log"
+	"time"
 )
 
 type questioner struct {
@@ -19,8 +18,8 @@ type questioner struct {
 }
 
 func (q questioner) doIt() {
-	//q.reportOrgs()
-	//q.reportUser()
+	q.reportUser()
+	q.reportOrgs()
 
 	fmt.Printf("## Theme for %s\n\n> _TODO_\n",
 		internal.DateRange(q.dateStart, q.dateEnd))
@@ -30,8 +29,8 @@ func (q questioner) doIt() {
 	internal.PrintIssues("Issues created", internal.RemovePrsFrom(issues))
 
 	issues = q.searchIssues(
-		"closed", fmt.Sprintf("author:%s", q.user))
-	internal.PrintIssues("Issues closed", internal.RemovePrsFrom(issues))
+		"closed", fmt.Sprintf("assignee:%s", q.user))
+	internal.PrintIssues("Issues fixed/closed", internal.RemovePrsFrom(issues))
 
 	issues = q.searchIssues(
 		"merged", fmt.Sprintf("author:%s", q.user))
@@ -77,8 +76,9 @@ func (q questioner) reportOrgs() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Printf("## Organizations\n")
 	for i, organization := range orgs {
-		fmt.Printf("%v. %v\n", i+1, organization.GetLogin())
+		fmt.Printf("  %v. %v\n", i+1, organization.GetLogin())
 	}
 }
 
@@ -87,5 +87,5 @@ func (q questioner) reportUser() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%s %s\n", user.GetName(), user.GetCompany())
+	fmt.Printf("# %s %s\n", user.GetName(), user.GetCompany())
 }

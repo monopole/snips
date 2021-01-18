@@ -2,25 +2,29 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
+	"github.com/monopole/snips/internal"
 	"os"
-	"snips/internal"
+	"time"
 )
 
+//go:embed README.md
+var readMeMd string
+
 func main() {
-	if !(len(os.Args) == 4 || len(os.Args) == 5) {
-		fmt.Print(`usage:
-  snips {user} {githubAuthToken} {dateStart} [{dayCount}] 
-e.g.
-  go run . monopole deadbeef0000deadbeef 2020-04-06 
-`)
+	if len(os.Args) < 3 || len(os.Args) > 6 {
+		fmt.Print(readMeMd)
 		os.Exit(1)
 	}
-	user := os.Args[1]
-	token := os.Args[2]
-	dayStart := internal.ParseDate(os.Args[3])
+	token := os.Args[1]
+	user := os.Args[2]
+	dayStart := time.Now().Round(24 * time.Hour)
+	if len(os.Args) > 3 {
+		dayStart = internal.ParseDate(os.Args[3])
+	}
 	dayCount := 6
-	if len(os.Args) == 5 {
+	if len(os.Args) > 4 {
 		dayCount = internal.ParseDayCount(os.Args[4])
 	}
 	ctx := context.Background()
