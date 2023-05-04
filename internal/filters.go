@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v52/github"
 	"log"
 	"net/url"
 	"strings"

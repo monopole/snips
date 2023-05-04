@@ -5,7 +5,7 @@ package internal
 import (
 	"context"
 	"fmt"
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v52/github"
 	"log"
 	"time"
 )

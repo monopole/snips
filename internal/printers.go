@@ -3,7 +3,7 @@ package internal
 import (
 	"fmt"
 
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v52/github"
 )
 
 func PrintIssues(title string, issues []*github.Issue) {

@@ -1,6 +1,6 @@
 package internal
 
-import "github.com/google/go-github/v33/github"
+import "github.com/google/go-github/v52/github"
 
 func MakeListOptions() github.ListOptions {
 	return github.ListOptions{PerPage: 50}
