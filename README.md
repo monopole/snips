@@ -1,13 +1,15 @@
 # snips
 
 The program gathers github data about a specific user over a specific 
-time period.  The period is specified by a start date
-and number of days to examine inclusive of the start date.
+time period, and prints it to `stdout` as markdown.
+
+The period is specified by a start date and the number of days to
+examine inclusive of the start date.
 
 ### Usage
 
 ```
-go run . {githubAuthToken} {githubUser} [{dateStart} [{dayCount}]] > snips.md
+go run . [--domain github.acmecorp.com] {githubAuthToken} {githubUser} [{dateStart} [{dayCount}]] > snips.md
 ```
 
 e.g., show data for one day by omitting `{dayCount}`:
@@ -52,7 +54,4 @@ auth token that should be protected as carefully as your github password.
 On usage, if the token owner and `{githubUser}` aren't the same, the program will fail
 to read private repos associated with `{githubUser}`.
 
-
 _TODO: convert this app to oauth or githubApp flow._
-
-_TODO: upgrade go-github deps._
