@@ -10,7 +10,7 @@ import (
 )
 
 type questioner struct {
-	user      string
+	users     []string
 	dateStart time.Time
 	dateEnd   time.Time
 	client    *github.Client
@@ -18,30 +18,32 @@ type questioner struct {
 }
 
 func (q questioner) doIt() {
-	q.reportUser()
-	q.reportOrgs()
+	for _, user := range q.users {
+		q.reportUser(user)
+		q.reportOrgs()
 
-	fmt.Printf("## Theme for %s\n\n> _TODO_\n",
-		internal.DateRange(q.dateStart, q.dateEnd))
+		fmt.Printf("## Theme for %s\n\n> _TODO_\n",
+			internal.DateRange(q.dateStart, q.dateEnd))
 
-	issues := q.searchIssues(
-		"created", fmt.Sprintf("author:%s", q.user))
-	internal.PrintIssues("Issues created", internal.RemovePrsFrom(issues))
+		issues := q.searchIssues(
+			"created", fmt.Sprintf("author:%s", user))
+		internal.PrintIssues("Issues created", internal.RemovePrsFrom(issues))
 
-	issues = q.searchIssues(
-		"closed", fmt.Sprintf("assignee:%s", q.user))
-	internal.PrintIssues("Issues fixed/closed", internal.RemovePrsFrom(issues))
+		issues = q.searchIssues(
+			"closed", fmt.Sprintf("assignee:%s", user))
+		internal.PrintIssues("Issues fixed/closed", internal.RemovePrsFrom(issues))
 
-	issues = q.searchIssues(
-		"merged", fmt.Sprintf("author:%s", q.user))
-	internal.PrintIssues("PRs merged", internal.KeepOnlyPrsFrom(issues))
+		issues = q.searchIssues(
+			"merged", fmt.Sprintf("author:%s", user))
+		internal.PrintIssues("PRs merged", internal.KeepOnlyPrsFrom(issues))
 
-	issues = q.searchIssues(
-		"updated", fmt.Sprintf("-author:%s commenter:%s", q.user, q.user))
-	issues = append(issues,
-		q.searchIssues("updated", fmt.Sprintf("reviewed-by:%s", q.user))...)
-	internal.PrintIssues("Issues Commented", internal.RemovePrsFrom(issues))
-	internal.PrintIssues("PRs Reviewed", internal.KeepOnlyPrsFrom(issues))
+		issues = q.searchIssues(
+			"updated", fmt.Sprintf("-author:%s commenter:%s", user, user))
+		issues = append(issues,
+			q.searchIssues("updated", fmt.Sprintf("reviewed-by:%s", user))...)
+		internal.PrintIssues("Issues Commented", internal.RemovePrsFrom(issues))
+		internal.PrintIssues("PRs Reviewed", internal.KeepOnlyPrsFrom(issues))
+	}
 }
 
 func (q questioner) searchIssues(dateQualifier, baseQuery string) []*github.Issue {
@@ -82,8 +84,8 @@ func (q questioner) reportOrgs() {
 	}
 }
 
-func (q questioner) reportUser() {
-	user, _, err := q.client.Users.Get(q.ctx, q.user)
+func (q questioner) reportUser(u string) {
+	user, _, err := q.client.Users.Get(q.ctx, u)
 	if err != nil {
 		log.Fatal(err)
 	}
