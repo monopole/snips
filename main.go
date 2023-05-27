@@ -7,70 +7,64 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/google/go-github/v52/github"
-	"github.com/monopole/snips/internal"
+	"github.com/monopole/snips/internal/oauth"
+	"github.com/monopole/snips/internal/pgmargs"
 	"golang.org/x/oauth2"
 )
 
 //go:embed README.md
 var readMeMd string
 
-const (
-	githubDotCom    = "github.com"
-	defaultDayCount = 14 // two weeks
-)
-
-type pgmArgs struct {
-	user     string
-	token    string
-	dayStart time.Time
-	dayCount int
-	domain   string
-}
-
-func parseArgs() (result pgmArgs) {
-	flag.StringVar(&result.domain, "domain", githubDotCom, "the github domain")
-	flag.Parse()
-	if flag.NArg() < 2 || flag.NArg() > 5 {
-		fmt.Print(readMeMd)
-		os.Exit(0)
-	}
-	result.token = flag.Arg(0)
-	result.user = flag.Arg(1)
-	result.dayStart = time.Now().Round(24 * time.Hour)
-	if flag.NArg() > 2 {
-		result.dayStart = internal.ParseDate(flag.Arg(2))
-	}
-	result.dayCount = defaultDayCount
-	if flag.NArg() > 3 {
-		result.dayCount = internal.ParseDayCount(flag.Arg(3))
-	}
-	return
-}
-
 func main() {
-	args := parseArgs()
+	args, err := pgmargs.ParseArgs()
+	if err != nil {
+		showErrAndExit(err)
+	}
+	if args.Token == "" {
+		args.Token, err = oauth.GetAccessToken(&oauth.Params{
+			GhDomain: args.GhDomain,
+			ClientId: args.ClientId,
+			CaPath:   args.CaPath,
+			Verbose:  false,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		if !args.NoTokenEcho {
+			fmt.Fprintf(
+				os.Stderr,
+				"  ***** In subsequent calls, add the flag:  --%s %s\n\n\n", pgmargs.FlagToken, args.Token)
+		}
+	}
 	ctx := context.Background()
-	cl, err := makeClient(ctx, args.domain, args.token)
+	cl, err := makeApiClient(ctx, args.GhDomain, args.Token)
 	if err != nil {
 		log.Fatalf("trouble making github client: %s", err.Error())
 	}
 	questioner{
-		user:      args.user,
-		dateStart: args.dayStart,
-		dateEnd:   args.dayStart.AddDate(0, 0, args.dayCount),
+		users:     args.User,
+		dateStart: args.DayStart,
+		dateEnd:   args.DayStart.AddDate(0, 0, args.DayCount-1 /* inclusive of day start */),
 		ctx:       ctx,
 		client:    cl,
 	}.doIt()
 }
 
-func makeClient(ctx context.Context, domain string, token string) (*github.Client, error) {
+func makeApiClient(ctx context.Context, domain string, token string) (*github.Client, error) {
 	oaCl := oauth2.NewClient(ctx, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token}))
-	if domain == githubDotCom {
+	if domain == pgmargs.GithubPublic {
 		return github.NewClient(oaCl), nil
 	}
 	const scheme = "https://"
 	return github.NewEnterpriseClient(scheme+domain, scheme+domain, oaCl)
+}
+
+func showErrAndExit(err error) {
+	fmt.Fprintf(os.Stderr, "*** Error: %s\n\n", err.Error())
+	flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, readMeMd)
+	os.Exit(1)
 }
