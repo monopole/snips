@@ -18,42 +18,78 @@ import (
 var readMeMd string
 
 const (
-	githubDotCom    = "github.com"
+	githubPublic              = "github.com"
+	githubTesla               = "github.tesla.com"
+	githubPublicOAuthClientId = "6019f1c21d0470ec327d"
+	githubTeslaOAuthClientId  = "3bfc36851715c5de6d23"
+
 	defaultDayCount = 14 // two weeks
+	flagToken       = "token"
 )
 
 type pgmArgs struct {
-	user     string
-	token    string
-	dayStart time.Time
-	dayCount int
-	domain   string
+	user        string
+	dayStart    time.Time
+	dayCount    int
+	domain      string
+	clientId    string
+	token       string
+	noTokenEcho bool
 }
 
 func parseArgs() (result pgmArgs) {
-	flag.StringVar(&result.domain, "domain", githubDotCom, "the github domain")
+	flag.StringVar(&result.domain, "domain", githubPublic, "the github domain")
+	flag.StringVar(&result.clientId, "client-id", "", "the oauth clientID")
+	flag.StringVar(&result.token, flagToken, "", "access token for the given github domain")
+	flag.BoolVar(&result.noTokenEcho, "suppress-token-echo", false, "don't echo the access token to stdout for reuse")
 	flag.Parse()
-	if flag.NArg() < 2 || flag.NArg() > 5 {
+	if flag.NArg() < 1 || flag.NArg() > 3 {
 		fmt.Print(readMeMd)
 		os.Exit(0)
 	}
-	result.token = flag.Arg(0)
-	result.user = flag.Arg(1)
+	result.user = flag.Arg(0)
 	result.dayStart = time.Now().Round(24 * time.Hour)
-	if flag.NArg() > 2 {
-		result.dayStart = internal.ParseDate(flag.Arg(2))
+	if flag.NArg() > 1 {
+		result.dayStart = internal.ParseDate(flag.Arg(1))
 	}
 	result.dayCount = defaultDayCount
-	if flag.NArg() > 3 {
-		result.dayCount = internal.ParseDayCount(flag.Arg(3))
+	if flag.NArg() > 2 {
+		result.dayCount = internal.ParseDayCount(flag.Arg(2))
 	}
 	return
 }
 
+func guessClientId(override, domain string) string {
+	if override != "" {
+		return override
+	}
+	if domain == githubTesla {
+		return githubTeslaOAuthClientId
+	}
+	if domain != githubPublic {
+		log.Fatalf("i have no client id registered with %s", domain)
+	}
+	return githubPublicOAuthClientId
+}
+
 func main() {
+	var err error
 	args := parseArgs()
+	if args.token == "" {
+		args.token, err = internal.GetOAuthAccessToken(&internal.OAuthParams{
+			Domain:   args.domain,
+			ClientId: guessClientId(args.clientId, args.domain),
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		if !args.noTokenEcho {
+			fmt.Fprintf(
+				os.Stderr, "  ***** In subsequent calls, add the flag:  --%s %s\n\n\n", flagToken, args.token)
+		}
+	}
 	ctx := context.Background()
-	cl, err := makeClient(ctx, args.domain, args.token)
+	cl, err := makeApiClient(ctx, args.domain, args.token)
 	if err != nil {
 		log.Fatalf("trouble making github client: %s", err.Error())
 	}
@@ -66,9 +102,9 @@ func main() {
 	}.doIt()
 }
 
-func makeClient(ctx context.Context, domain string, token string) (*github.Client, error) {
+func makeApiClient(ctx context.Context, domain string, token string) (*github.Client, error) {
 	oaCl := oauth2.NewClient(ctx, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token}))
-	if domain == githubDotCom {
+	if domain == githubPublic {
 		return github.NewClient(oaCl), nil
 	}
 	const scheme = "https://"

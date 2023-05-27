@@ -1,21 +1,25 @@
 # snips
 
 The program gathers github data about a specific user over a specific 
-time period, and prints it to `stdout` as markdown.
+time period and prints it to `stdout` as markdown.
 
-The period is specified by a start date and the number of days to
-examine inclusive of the start date.
+The time period is a start date and a day count inclusive of the start date.
 
 ### Usage
 
 ```
-go run . [--domain github.acmecorp.com] {githubAuthToken} {githubUser} [{dateStart} [{dayCount}]] > snips.md
+go install github.com/monopole/snips@latest
 ```
 
-e.g., show data for one day by omitting `{dayCount}`:
+```
+snips [--domain github.acmecorp.com] [--token {tokenForDomain}] \
+    {githubUser} [{dateStart} [{dayCount}]] > snips.md
+```
+
+e.g., get data from [github.com] (the default domain) for one day by omitting `{dayCount}`:
 
 ```
-go run . $token monopole 2020-04-06 > snips.md
+snips monopole 2020-04-06 > snips.md
 ```
 
 To render the output to a browser, try `pandoc`.
@@ -26,23 +30,24 @@ sudo apt install pandoc
 ```
 
 ```
-snips $token monopole 2020-01-01 28 |\
+snips --token {token} monopole 2020-01-01 28 |\
     pandoc |\
     google-chrome "data:text/html;base64,$(base64 -w 0 <&0)"
 ```
 
 ### Authentication
 
-[githubApp]: https://docs.github.com/en/apps/creating-github-apps/setting-up-a-github-app/creating-a-github-app
+[OAuth device flow]: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow
 
-This program is not an oauth-based App nor a [githubApp]; it requires a "classic"
-auth token that should be protected as carefully as your github password.
+This program uses an [OAuth device flow] to get an API access token.
 
-> To get a token, read:
+If that fails for some reason, you can use a "classic" (scope-free) token:
+
+> To get a token, follow the instructions at:
 > 
 > https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token
 > 
-> Use "Generate new token (classic) for general use."
+> Use _Generate new token (classic) for general use._
 >
 > Select the scopes:
 > ```
@@ -51,7 +56,8 @@ auth token that should be protected as carefully as your github password.
 > [x] user
 > ```
 
+Once you have a token, you can specify it as the value of the `--token` flag.
+
+
 On usage, if the token owner and `{githubUser}` aren't the same, the program will fail
 to read private repos associated with `{githubUser}`.
-
-_TODO: convert this app to oauth or githubApp flow._
