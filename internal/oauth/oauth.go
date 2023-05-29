@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	scopes                    = "repo read:org user"
 	headerAccept              = "Accept"
 	headerContentType         = "Content-Type"
 	contentTypeFormURLEncoded = "application/x-www-form-urlencoded"
@@ -23,6 +24,7 @@ const (
 	scheme                    = "https://"
 	defaultWaitingInterval    = 8 * time.Second
 	maxAttempts               = 10
+	WarningPrefix             = " ***** "
 )
 
 type Params struct {
@@ -59,7 +61,7 @@ func GetAccessToken(params *Params) (accessCode string, err error) {
 
 	postData := url.Values{}
 	postData.Add("client_id", params.ClientId)
-	postData.Add("scope", "repo read:org user")
+	postData.Add("scope", scopes)
 	if params.Verbose {
 		fmt.Printf("posting to %s\n", loc.String())
 	}
@@ -78,12 +80,14 @@ func GetAccessToken(params *Params) (accessCode string, err error) {
 		fmt.Printf("CODES %+v\n", codes)
 	}
 	waitingInterval := computeWaitingInterval(codes.MinIntervalSeconds)
-
-	fmt.Fprintf(os.Stderr, `
-  ***** You have %s to visit  %s  and enter this code:  %s
-`, time.Duration(maxAttempts)*waitingInterval, codes.VerifyUri, codes.UserCode)
-
+	warnUser(waitingInterval, &codes)
 	return pollForTheUsersApproval(cl, params, waitingInterval, codes.DeviceCode)
+}
+
+func warnUser(waitingInterval time.Duration, codes *devCodeData) {
+	fmt.Fprintf(os.Stderr, `
+%s You have %s to visit  %s  and enter this code:  %s
+`, WarningPrefix, time.Duration(maxAttempts)*waitingInterval, codes.VerifyUri, codes.UserCode)
 }
 
 func computeWaitingInterval(minIntervalSeconds int) time.Duration {

@@ -1,6 +1,6 @@
-package internal
+package unused
 
-// Not using this stuff, but want to be sure it compiles.
+// Not using this stuff because basic issue search seems best, but want to be sure it compiles.
 
 import (
 	"context"
@@ -32,7 +32,7 @@ var myRepos = []ghRepo{
 	{"GoogleContainerTools", "kpt"},
 }
 
-// Not using this any more
+// Not using this anymore
 func (q *oldQuestioner) reportPrs() {
 	fmt.Print("\n## PRS\n\n")
 	for _, repo := range myRepos {
@@ -41,15 +41,20 @@ func (q *oldQuestioner) reportPrs() {
 			//prList = sortPrsDate(prList)
 			fmt.Printf("#### %s\n\n", repo.name)
 			for _, pr := range prs {
-				PrintPrLink(pr)
+				printPrLink(pr)
 			}
 			fmt.Println()
 		}
 	}
 }
-
+func printPrLink(pr *github.PullRequest) {
+	fmt.Printf(" - %s [%s](%s)\n",
+		pr.GetMergedAt().Format("2006-01-02"),
+		pr.GetTitle(),
+		pr.GetHTMLURL())
+}
 func (q *oldQuestioner) queryPrs(repo ghRepo) (prs []*github.PullRequest) {
-	lOpts := MakeListOptions()
+	lOpts := github.ListOptions{PerPage: 50}
 	for {
 		prList, resp, err := q.client.PullRequests.List(
 			q.ctx,

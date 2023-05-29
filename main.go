@@ -8,6 +8,10 @@ import (
 	"log"
 	"os"
 
+	"github.com/monopole/snips/internal/report"
+
+	"github.com/monopole/snips/internal/query"
+
 	"github.com/google/go-github/v52/github"
 	"github.com/monopole/snips/internal/oauth"
 	"github.com/monopole/snips/internal/pgmargs"
@@ -33,9 +37,7 @@ func main() {
 			log.Fatal(err)
 		}
 		if !args.NoTokenEcho {
-			fmt.Fprintf(
-				os.Stderr,
-				"  ***** In subsequent calls, add the flag:  --%s %s\n\n\n", pgmargs.FlagToken, args.Token)
+			pgmargs.EchoToken(oauth.WarningPrefix, args.Token)
 		}
 	}
 	ctx := context.Background()
@@ -43,13 +45,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("trouble making github client: %s", err.Error())
 	}
-	questioner{
-		users:     args.User,
-		dateStart: args.DayStart,
-		dateEnd:   args.DayStart.AddDate(0, 0, args.DayCount-1 /* inclusive of day start */),
-		ctx:       ctx,
-		client:    cl,
-	}.doIt()
+	result, err := query.Worker{
+		Users:     args.User,
+		DateRange: args.DateRange,
+		Ctx:       ctx,
+		GhClient:  cl,
+	}.DoIt()
+	if err != nil {
+		log.Fatalf("trouble doing queries: %s", err.Error())
+	}
+	for i := range result {
+		report.MyPrint(args.DateRange, result[i])
+	}
 }
 
 func makeApiClient(ctx context.Context, domain string, token string) (*github.Client, error) {
