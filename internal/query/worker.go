@@ -10,14 +10,15 @@ import (
 	"github.com/monopole/snips/internal/types"
 )
 
-type issueList []*github.Issue
-
+// Worker queries GitHub.
 type Worker struct {
 	Users     []string
 	DateRange *types.DayRange
 	GhClient  *github.Client
 	Ctx       context.Context
 }
+
+type issueList []*github.Issue
 
 type filter int
 
@@ -27,11 +28,11 @@ const (
 	rejectPrs
 )
 
-func (q Worker) DoIt() ([]*types.MyUser, error) {
+func (w *Worker) DoIt() ([]*types.MyUser, error) {
 	var result []*types.MyUser
-	for _, n := range q.Users {
+	for _, n := range w.Users {
 		time.Sleep(15 * time.Second) // Avoid hitting API rate limit.
-		rec, err := q.doQueriesOnUser(n)
+		rec, err := w.doQueriesOnUser(n)
 		if err != nil {
 			log.Printf("trouble looking up user %s: %s\n", n, err.Error())
 		}
@@ -40,19 +41,19 @@ func (q Worker) DoIt() ([]*types.MyUser, error) {
 	return result, nil
 }
 
-func (q Worker) doQueriesOnUser(userName string) (*types.MyUser, error) {
-	myUser, err := q.getUserRec(userName)
+func (w *Worker) doQueriesOnUser(userName string) (*types.MyUser, error) {
+	myUser, err := w.getUserRec(userName)
 	if err != nil {
 		return nil, err
 	}
-	err = q.getOrgs(myUser)
+	err = w.getOrgs(myUser)
 	if err != nil {
 		return nil, err
 	}
 
 	var lst issueList
 
-	lst, err = q.searchIssues("created", "author:%s", myUser.Login)
+	lst, err = w.searchIssues("created", "author:%s", myUser.Login)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +62,7 @@ func (q Worker) doQueriesOnUser(userName string) (*types.MyUser, error) {
 		return nil, err
 	}
 
-	lst, err = q.searchIssues("closed", "assignee:%s", myUser.Login)
+	lst, err = w.searchIssues("closed", "assignee:%s", myUser.Login)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +70,7 @@ func (q Worker) doQueriesOnUser(userName string) (*types.MyUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	lst, err = q.searchIssues("merged", "author:%s", myUser.Login)
+	lst, err = w.searchIssues("merged", "author:%s", myUser.Login)
 	if err != nil {
 		return nil, err
 	}
@@ -77,13 +78,13 @@ func (q Worker) doQueriesOnUser(userName string) (*types.MyUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	lst, err = q.searchIssues("updated", "-author:%s commenter:%s", myUser.Login, myUser.Login)
+	lst, err = w.searchIssues("updated", "-author:%s commenter:%s", myUser.Login, myUser.Login)
 	if err != nil {
 		return nil, err
 	}
 	{
 		var lst2 issueList
-		lst2, err = q.searchIssues("updated", "reviewed-by:%s", myUser.Login)
+		lst2, err = w.searchIssues("updated", "reviewed-by:%s", myUser.Login)
 		if err != nil {
 			return nil, err
 		}
@@ -94,9 +95,9 @@ func (q Worker) doQueriesOnUser(userName string) (*types.MyUser, error) {
 	return myUser, nil
 }
 
-func (q Worker) getUserRec(n string) (*types.MyUser, error) {
+func (w *Worker) getUserRec(n string) (*types.MyUser, error) {
 	var r types.MyUser
-	user, _, err := q.GhClient.Users.Get(q.Ctx, n)
+	user, _, err := w.GhClient.Users.Get(w.Ctx, n)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -107,17 +108,17 @@ func (q Worker) getUserRec(n string) (*types.MyUser, error) {
 	return &r, nil
 }
 
-func (q Worker) searchIssues(dateQualifier, qFmt string, args ...any) (issueList, error) {
+func (w *Worker) searchIssues(dateQualifier, qFmt string, args ...any) (issueList, error) {
 	query := fmt.Sprintf(
 		"%s:%s..%s %s",
 		dateQualifier,
-		q.DateRange.StartAsTime().Format(types.DayFormat1),
-		q.DateRange.EndAsTime().Format(types.DayFormat1),
+		w.DateRange.StartAsTime().Format(types.DayFormat1),
+		w.DateRange.EndAsTime().Format(types.DayFormat1),
 		fmt.Sprintf(qFmt, args...))
 	var lst issueList
 	opts := makeSearchOptions()
 	for {
-		results, resp, err := q.GhClient.Search.Issues(q.Ctx, query, opts)
+		results, resp, err := w.GhClient.Search.Issues(w.Ctx, query, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -142,9 +143,9 @@ func filterIssues(issues issueList, f filter) (result issueList) {
 	return
 }
 
-func (q Worker) getOrgs(r *types.MyUser) error {
+func (w *Worker) getOrgs(r *types.MyUser) error {
 	lOpts := makeListOptions()
-	orgs, _, err := q.GhClient.Organizations.List(q.Ctx, r.Login, &lOpts)
+	orgs, _, err := w.GhClient.Organizations.List(w.Ctx, r.Login, &lOpts)
 	if err != nil {
 		return err
 	}

@@ -60,12 +60,12 @@ func main() {
 		log.Fatalf("trouble making github client: %s", err.Error())
 	}
 	fmt.Fprintf(os.Stderr, "Working...  ")
-	result, err := query.Worker{
+	result, err := (&query.Worker{
 		Users:     args.User,
 		DateRange: args.DateRange,
 		Ctx:       ctx,
 		GhClient:  cl,
-	}.DoIt()
+	}).DoIt()
 	fmt.Fprintln(os.Stderr)
 	if err != nil {
 		log.Fatalf("trouble doing queries: %s", err.Error())
