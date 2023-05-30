@@ -21,9 +21,6 @@ go install github.com/monopole/snips@latest
 To get data from a GitHub enterprise instance at _Acme Corporation_ 
 for several users over a common period of September in 2020:
 
-````
-export GH_TOKEN=$(snips --domain github.acmecorp.com --get-gh-token)
-```
 ```
 snips \
     --domain github.acmecorp.com \
@@ -44,27 +41,28 @@ The default value for `--day-count` is 14 (two weeks).
 
 If `--day-start` is omitted, a value of _today_ minus `day-count` is used.
 
+The default `--domain` is `github.com`.
 
 ### Authentication Token
 
-The use of the `--get-gh-token` flag, or the absence of a value for
-both the shell variable `GH_TOKEN` and the `--gh-token` override flag,
-triggers an [OAuth device flow].
+An [OAuth device flow] for the given `--domain` is triggered when either
 
-The flow helps the user obtain an API access token from
-the specified `--domain` (the default is `--domain github.com`).
+ * the `--get-gh-token` flag is present,
+ * or both the shell variable `GH_TOKEN` and the `--gh-token` override flag are empty.
 
-A _newly_ obtained token will be echoed to `stderr`.
+Use this
+```
+export GH_TOKEN=$(snips --domain github.acmecorp.com --get-gh-token)
+```
+to login once, then use `snips` multiple times.
 
-Placing the token value into the shell variable `GH_TOKEN`
-allows one to omit the `--gh-token` flag in subsequent usage.
+This program will not return activity conducted in private repos.
 
 #### Fallback to classic flow
 
-If the [OAuth device flow] fails for some reason (which it will
-if this app has no clientId for the `--domain` being used),
-then try the instructions for [obtaining a classic token]
-(being sure to do this from your desired `--domain`).
+If the OAuth flow fails for some reason (e.g.
+this program has no clientId for the `--domain` being used),
+then try the instructions for [obtaining a classic token].
 
 In this flow, select the scopes:
 ```
@@ -74,14 +72,12 @@ In this flow, select the scopes:
 ```
 
 A classic token may be used with the `--gh-token` flag
-as if it had been created via the OAuth flow.
+as if it had been created via the OAuth device flow.
 
 Protect this classic token like a password. During creation,
 give it an expiration period, and/or delete it after
 use at the [token settings] page.
 
-The tool will not return _private_ GitHub data for a username,
-unless the username matches the user that authenticated to obtain the token.
 
 ### Rendered Output
 
@@ -94,7 +90,7 @@ sudo apt install pandoc
 ```
 
 ```
-snips --gh-token {token} monopole 2020-01-01 28 |\
+snips --day-start 2020-01-01 --day-count 30 monopole |\
     pandoc |\
     google-chrome "data:text/html;base64,$(base64 -w 0 <&0)"
 ```
