@@ -5,25 +5,32 @@ import (
 	"github.com/monopole/snips/internal/types"
 )
 
-func MyPrint(dr *types.DayRange, u *types.MyUser) {
-	fmt.Printf("# %s %s\n", u.Name, u.Company)
-	fmt.Printf("## Organizations\n")
+func PrintReport(title string, domain string, dr *types.DayRange, users []*types.MyUser) {
+	fmt.Printf("# %s\n\n", title)
+	fmt.Printf("_At %s, %s_\n\n", domain, dr.PrettyRange())
+	for i := range users {
+		printUser(users[i])
+	}
+}
+
+func printUser(u *types.MyUser) {
+	fmt.Printf("## %s (%s)\n\n", u.Name, u.Login)
+	fmt.Printf("### Organizations\n")
 	for i, organization := range u.Orgs {
 		fmt.Printf("  %v. %v\n", i+1, organization.Login)
 	}
-	fmt.Printf("## Theme for %s\n", dr.PrettyRange())
-	printRepoToIssueMap("Issues created", u.IssuesCreated)
-	printRepoToIssueMap("Issues fixed/closed", u.IssuesClosed)
-	printRepoToIssueMap("Issues commented", u.IssuesCommented)
-	printRepoToIssueMap("PRs Merged", u.PrsMerged)
-	printRepoToIssueMap("PRs Reviewed", u.PrsReviewed)
+	printRepoToIssueMap("Issues created", u.Login, u.IssuesCreated)
+	printRepoToIssueMap("Issues fixed/closed", u.Login, u.IssuesClosed)
+	printRepoToIssueMap("Issues commented", u.Login, u.IssuesCommented)
+	printRepoToIssueMap("PRs Merged", u.Login, u.PrsMerged)
+	printRepoToIssueMap("PRs Reviewed", u.Login, u.PrsReviewed)
 }
 
-func printRepoToIssueMap(title string, m map[types.RepoName][]types.MyIssue) {
+func printRepoToIssueMap(title string, login string, m map[types.RepoName][]types.MyIssue) {
 	if len(m) < 1 {
 		return
 	}
-	fmt.Printf("\n## %s\n\n", title)
+	fmt.Printf("\n### %s (%s)\n\n", title, login)
 	for repo, lst := range m {
 		if len(lst) < 1 {
 			continue

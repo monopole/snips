@@ -7,13 +7,17 @@ import (
 )
 
 const (
-	DayFormat1 = "2006-01-02"
-	DayFormat2 = "2006-Jan-02"
+	DayFormat1      = "2006-01-02"
+	DayFormat2      = "2006-Jan-02"
+	defaultDayCount = 14 // two weeks
 )
 
 // DayRange is a specific calendar day (YYYY/MM/DD) paired with a day count.
 // The day count is inclusive of the specific day.
 // A day count less than one is illegal; there must be at least one day in the range.
+// The end calendar day is computed from the y/m/d start date, and used in
+// GitHub range queries:
+// https://docs.github.com/en/search-github/getting-started-with-searching-on-github/understanding-the-search-syntax#query-for-dates
 type DayRange struct {
 	Year     int
 	Month    time.Month
@@ -21,12 +25,56 @@ type DayRange struct {
 	DayCount int
 }
 
-func MakeDayRange(dayStart string, dayCount int) (*DayRange, error) {
-	if dayCount < 1 {
-		return nil, fmt.Errorf("dayCount must be greater than zero")
+func makeDayRangeWithExplicitEndDate(dayStart string, dayEnd string, dayCount int) (*DayRange, error) {
+	if dayEnd == "" {
+		return nil, fmt.Errorf("this code path wants a non-empty dayEnd")
 	}
+	var dayStartAsTime, dayEndAsTime time.Time
+	var err error
+	dayEndAsTime, err = parseDate(dayEnd)
+	if err != nil {
+		return nil, err
+	}
+	if dayStart == "" {
+		if dayCount < 1 {
+			dayCount = defaultDayCount
+		}
+		dayStartAsTime = dayEndAsTime.AddDate(0, 0, -dayCount)
+	} else {
+		if dayCount > 0 {
+			return nil, fmt.Errorf("specify only 2 of dayStart, dayEnd and dayCount")
+		}
+		dayStartAsTime, err = parseDate(dayStart)
+		if err != nil {
+			return nil, err
+		}
+		if !dayStartAsTime.Before(dayEndAsTime) {
+			return nil, fmt.Errorf("dayStart must preceed dayEnd")
+		}
+		hours := int(dayEndAsTime.Sub(dayStartAsTime).Hours())
+		if hours%24 != 0 {
+			return nil, fmt.Errorf("hours=%d not divisible by 24, wtf", hours)
+		}
+		dayCount = (hours / 24) + 1
+	}
+	return &DayRange{
+		Year:     dayStartAsTime.Year(),
+		Month:    dayStartAsTime.Month(),
+		Day:      dayStartAsTime.Day(),
+		DayCount: dayCount,
+	}, nil
+}
 
+// MakeDayRange makes an instance of DayRange from the given arguments.
+// Date strings must be in the format YYYY/MM/DD.
+func MakeDayRange(dayStart string, dayEnd string, dayCount int) (*DayRange, error) {
+	if dayEnd != "" {
+		return makeDayRangeWithExplicitEndDate(dayStart, dayEnd, dayCount)
+	}
 	var dayStartAsTime time.Time
+	if dayCount < 1 {
+		dayCount = defaultDayCount
+	}
 	if dayStart == "" {
 		// Default is today minus dayCount, revealing recent activity by default.
 		dayStartAsTime = time.Now().Round(24*time.Hour).AddDate(0, 0, -dayCount)
@@ -60,17 +108,17 @@ func (dr *DayRange) PrettyRange() string {
 	d2 := dr.EndAsTime()
 	if d1.Year() != d2.Year() {
 		const f = "January 2, 2006"
-		return fmt.Sprintf("%s - %s", d1.Format(f), d2.Format(f))
+		return fmt.Sprintf("%s - %s (%d days)", d1.Format(f), d2.Format(f), dr.DayCount)
 	}
 	if d1.Month() != d2.Month() {
 		const f = "January 2"
-		return fmt.Sprintf("%s - %s %d", d1.Format(f), d2.Format(f), d2.Year())
+		return fmt.Sprintf("%s - %s %d (%d days)", d1.Format(f), d2.Format(f), d2.Year(), dr.DayCount)
 	}
 	if d1.Day() != d2.Day() {
 		const f = "January 2"
-		return fmt.Sprintf("%s-%d %d", d1.Format(f), d2.Day(), d2.Year())
+		return fmt.Sprintf("%s-%d %d (%d days)", d1.Format(f), d2.Day(), d2.Year(), dr.DayCount)
 	}
-	return fmt.Sprintf("%s", d1.Format("January 2, 2006"))
+	return fmt.Sprintf("%s (one day)", d1.Format("January 2, 2006"))
 }
 
 func parseDate(v string) (time.Time, error) {

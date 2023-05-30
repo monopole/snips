@@ -3,8 +3,9 @@ package pgmargs
 import (
 	"flag"
 	"fmt"
-	"github.com/monopole/snips/internal/types"
 	"os"
+
+	"github.com/monopole/snips/internal/types"
 )
 
 const (
@@ -13,25 +14,26 @@ const (
 	githubPublicOAuthClientId = "6019f1c21d0470ec327d"
 	githubTeslaOAuthClientId  = "3bfc36851715c5de6d23"
 
-	EnvGhToken = "GH_TOKEN"
+	envGhToken = "GH_TOKEN"
+	flagToken  = "gh-token"
 
-	defaultDayCount = 14 // two weeks
-
-	FlagToken    = "token"
 	flagDayStart = "day-start"
+	flagDayEnd   = "day-end"
 	flagDayCount = "day-count"
 	flagNoEcho   = "suppress-token-echo"
 )
 
 // pgmArgs holds clean arguments from the command line.
 type pgmArgs struct {
-	User        []string
-	DateRange   *types.DayRange
-	GhDomain    string
-	ClientId    string
-	Token       string
-	NoTokenEcho bool
-	CaPath      string
+	User         []string
+	Title        string
+	DateRange    *types.DayRange
+	GhDomain     string
+	ClientId     string
+	Token        string
+	NoTokenEcho  bool
+	JustGetToken bool
+	CaPath       string
 }
 
 // ParseArgs parses and validates arguments from the command line.
@@ -40,33 +42,34 @@ func ParseArgs() (*pgmArgs, error) {
 		err      error
 		result   pgmArgs
 		dayStart string
+		dayEnd   string
 		dayCount int
 	)
 
-	flag.IntVar(&dayCount, flagDayCount, defaultDayCount, "how many days, inclusive of start date")
+	flag.IntVar(&dayCount, flagDayCount, 0, "how many days, inclusive of start date")
 	flag.StringVar(&dayStart, flagDayStart, "", "the day to start, formatted as "+types.DateOptions())
+	flag.StringVar(&dayEnd, flagDayEnd, "", "the day to end, formatted as "+types.DateOptions()+", (default today)")
+	flag.StringVar(&result.Title, "title", "GitHub Activity", "the title of the report")
+	flag.BoolVar(&result.JustGetToken, "get-gh-token", false, "force login, return the gh-token")
 	flag.StringVar(&result.CaPath, "ca-path", "", "local path to cert file for TLS in oauth dance")
 	flag.StringVar(&result.GhDomain, "domain", GithubPublic, "the github domain")
 	flag.StringVar(&result.ClientId, "client-id", "", "the oauth clientID")
-	flag.StringVar(&result.Token, FlagToken, "",
-		fmt.Sprintf("access token for the given GitHub domain (overrides env var %s)", EnvGhToken))
+	flag.StringVar(&result.Token, flagToken, "",
+		fmt.Sprintf("access token for the given GitHub domain (overrides env var %s)", envGhToken))
 
-	// By default, the token echoed to stderr, so the user can copy/paste and use with the --token flag
-	// to avoid repeated logins.
+	// By default, the GitHub access token echoed to stderr, so that the
+	// user can copy/paste it into flagToken or envGhToken to avoid repeated logins.
 	flag.BoolVar(&result.NoTokenEcho, flagNoEcho,
-		false, "don't echo the access token to stderr for reuse (over the shoulder security)")
+		false, fmt.Sprintf("don't echo the value of %s (over-the-shoulder security)", flagToken))
 
 	flag.Parse()
 
-	if flag.NArg() == 0 {
-		return nil, fmt.Errorf("must specify at least one user")
-	}
 	// All the arguments should be usernames.
 	result.User = flag.Args()
 
 	if result.Token == "" {
 		// For fun, see if it can be pulled from env var.
-		result.Token = os.Getenv(EnvGhToken)
+		result.Token = os.Getenv(envGhToken)
 	}
 
 	if result.ClientId == "" {
@@ -76,7 +79,10 @@ func ParseArgs() (*pgmArgs, error) {
 		}
 	}
 
-	result.DateRange, err = types.MakeDayRange(dayStart, dayCount)
+	if dayStart != "" && dayEnd != "" && dayCount > 0 {
+		return nil, fmt.Errorf("specify any two of --%s, --%s and --%s", flagDayStart, flagDayEnd, flagDayCount)
+	}
+	result.DateRange, err = types.MakeDayRange(dayStart, dayEnd, dayCount)
 	if err != nil {
 		return nil, err
 	}
@@ -99,11 +105,13 @@ func determineClientIdFromDomain(domain string) (string, error) {
 func EchoToken(prefix, token string) {
 	fmt.Fprintf(
 		os.Stderr, `
+%s Login successful.
 %s     In subsequent calls, add this flag:  --%s %s
 %s                     or export this var:  export %s=%s
 %s To suppress this reminder, use --%s
 `[1:],
-		prefix, FlagToken, token,
-		prefix, EnvGhToken, token,
+		prefix,
+		prefix, flagToken, token,
+		prefix, envGhToken, token,
 		prefix, flagNoEcho)
 }

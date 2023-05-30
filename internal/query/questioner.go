@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/google/go-github/v52/github"
 	"github.com/monopole/snips/internal/types"
@@ -29,6 +30,7 @@ const (
 func (q Worker) DoIt() ([]*types.MyUser, error) {
 	var result []*types.MyUser
 	for _, n := range q.Users {
+		time.Sleep(15 * time.Second) // Avoid hitting API rate limit.
 		rec, err := q.doQueriesOnUser(n)
 		if err != nil {
 			log.Printf("trouble looking up user %s: %s\n", n, err.Error())

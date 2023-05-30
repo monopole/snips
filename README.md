@@ -21,11 +21,13 @@ go install github.com/monopole/snips@latest
 To get data from a GitHub enterprise instance at _Acme Corporation_ 
 for several users over a common period of September in 2020:
 
+````
+export GH_TOKEN=$(snips --domain github.acmecorp.com --get-gh-token)
+```
 ```
 snips \
     --domain github.acmecorp.com \
-    --token blah-blah-blah \
-    --day-start 2020-sep-01 \
+    --day-start 2020-Sep-01 \
     --day-count 30 \
      torvalds thockin spf13 > /tmp/snips.md
 ```
@@ -45,8 +47,9 @@ If `--day-start` is omitted, a value of _today_ minus `day-count` is used.
 
 ### Authentication Token
 
-The absence of a value for both the `--token` flag and the shell
-variable `GH_TOKEN` triggers an [OAuth device flow].
+The use of the `--get-gh-token` flag, or the absence of a value for
+both the shell variable `GH_TOKEN` and the `--gh-token` override flag,
+triggers an [OAuth device flow].
 
 The flow helps the user obtain an API access token from
 the specified `--domain` (the default is `--domain github.com`).
@@ -54,7 +57,7 @@ the specified `--domain` (the default is `--domain github.com`).
 A _newly_ obtained token will be echoed to `stderr`.
 
 Placing the token value into the shell variable `GH_TOKEN`
-allows one to omit the `--token` flag in subsequent usage.
+allows one to omit the `--gh-token` flag in subsequent usage.
 
 #### Fallback to classic flow
 
@@ -70,7 +73,7 @@ In this flow, select the scopes:
  [x] user (to see public info about the user)
 ```
 
-A classic token may be used with the `--token` flag
+A classic token may be used with the `--gh-token` flag
 as if it had been created via the OAuth flow.
 
 Protect this classic token like a password. During creation,
@@ -91,7 +94,7 @@ sudo apt install pandoc
 ```
 
 ```
-snips --token {token} monopole 2020-01-01 28 |\
+snips --gh-token {token} monopole 2020-01-01 28 |\
     pandoc |\
     google-chrome "data:text/html;base64,$(base64 -w 0 <&0)"
 ```
