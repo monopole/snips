@@ -19,6 +19,7 @@ type Worker struct {
 }
 
 type issueList []*github.Issue
+type commitList []*github.CommitResult
 
 type filter int
 
@@ -46,53 +47,62 @@ func (w *Worker) doQueriesOnUser(userName string) (*types.MyUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = w.getOrgs(myUser)
-	if err != nil {
+	if err = w.getOrgs(myUser); err != nil {
 		return nil, err
 	}
+	if err = w.getIssues(myUser); err != nil {
+		return nil, err
+	}
+	if err = w.getCommits(myUser); err != nil {
+		return nil, err
+	}
+	return myUser, nil
+}
 
+func (w *Worker) getIssues(myUser *types.MyUser) (err error) {
 	var lst issueList
-
 	lst, err = w.searchIssues("created", "author:%s", myUser.Login)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	myUser.IssuesCreated, err = makeMapOfRepoToIssueList(filterIssues(lst, rejectPrs))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	lst, err = w.searchIssues("closed", "assignee:%s", myUser.Login)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	myUser.IssuesClosed, err = makeMapOfRepoToIssueList(filterIssues(lst, rejectPrs))
 	if err != nil {
-		return nil, err
+		return err
 	}
+
 	lst, err = w.searchIssues("merged", "author:%s", myUser.Login)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	myUser.PrsMerged, err = makeMapOfRepoToIssueList(filterIssues(lst, keepOnlyPrs))
 	if err != nil {
-		return nil, err
+		return err
 	}
+
 	lst, err = w.searchIssues("updated", "-author:%s commenter:%s", myUser.Login, myUser.Login)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	{
 		var lst2 issueList
 		lst2, err = w.searchIssues("updated", "reviewed-by:%s", myUser.Login)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		lst = append(lst, lst2...)
 	}
 	myUser.IssuesCommented, err = makeMapOfRepoToIssueList(filterIssues(lst, rejectPrs))
 	myUser.PrsReviewed, err = makeMapOfRepoToIssueList(filterIssues(lst, keepOnlyPrs))
-	return myUser, nil
+	return nil
 }
 
 func (w *Worker) getUserRec(n string) (*types.MyUser, error) {
@@ -108,15 +118,15 @@ func (w *Worker) getUserRec(n string) (*types.MyUser, error) {
 	return &r, nil
 }
 
+// searchIssues uses the "search" endpoint, not the "issues" endpoint, because the goal is to
+// discover what the user has been doing with issues, rather than manage issues.
+// Compare the docs here:
+// https://docs.github.com/en/rest/search?apiVersion=2022-11-28#search-issues-and-pull-requests
+// https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28
 func (w *Worker) searchIssues(dateQualifier, qFmt string, args ...any) (issueList, error) {
-	query := fmt.Sprintf(
-		"%s:%s..%s %s",
-		dateQualifier,
-		w.DateRange.StartAsTime().Format(types.DayFormat1),
-		w.DateRange.EndAsTime().Format(types.DayFormat1),
-		fmt.Sprintf(qFmt, args...))
-	var lst issueList
+	query := w.makeQuery(dateQualifier, qFmt, args)
 	opts := makeSearchOptions()
+	var lst issueList
 	for {
 		results, resp, err := w.GhClient.Search.Issues(w.Ctx, query, opts)
 		if err != nil {
@@ -131,6 +141,57 @@ func (w *Worker) searchIssues(dateQualifier, qFmt string, args ...any) (issueLis
 	return lst, nil
 }
 
+// getCommits looks for non-merge commits
+// (merge commits usually aren't interesting).
+func (w *Worker) getCommits(myUser *types.MyUser) (err error) {
+	var lst commitList
+	lst, err = w.searchCommits("author-date", "merge:false author:%s", myUser.Login)
+	if err != nil {
+		return err
+	}
+	if lookAtCommitterField := false; lookAtCommitterField {
+		// Usually the author is the committer, so don't bother?
+		var lst2 commitList
+		lst2, err = w.searchCommits("committer-date", "merge:false committer:%s", myUser.Login)
+		if err != nil {
+			return err
+		}
+		lst = append(lst, lst2...)
+		lst = removeDuplicateCommits(lst)
+	}
+	myUser.Commits, err = makeMapOfRepoToCommitList(lst)
+	return nil
+}
+
+// searchCommits uses https://docs.github.com/en/search-github/searching-on-github/searching-commits
+// It doesn't use https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
+func (w *Worker) searchCommits(dateQualifier, qFmt string, args ...any) (commitList, error) {
+	query := w.makeQuery(dateQualifier, qFmt, args)
+	opts := makeSearchOptions()
+	var lst commitList
+	for {
+		results, resp, err := w.GhClient.Search.Commits(w.Ctx, query, opts)
+		if err != nil {
+			return nil, err
+		}
+		lst = append(lst, results.Commits...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+	return lst, nil
+}
+
+func (w *Worker) makeQuery(dateQualifier string, qFmt string, args []any) string {
+	return fmt.Sprintf(
+		"%s:%s..%s %s",
+		dateQualifier,
+		w.DateRange.StartAsTime().Format(types.DayFormat1),
+		w.DateRange.EndAsTime().Format(types.DayFormat1),
+		fmt.Sprintf(qFmt, args...))
+}
+
 func filterIssues(issues issueList, f filter) (result issueList) {
 	if f != keepOnlyPrs && f != rejectPrs {
 		log.Fatalf("unable to deal with filter %v", f)
@@ -143,14 +204,14 @@ func filterIssues(issues issueList, f filter) (result issueList) {
 	return
 }
 
-func (w *Worker) getOrgs(r *types.MyUser) error {
+func (w *Worker) getOrgs(u *types.MyUser) error {
 	lOpts := makeListOptions()
-	orgs, _, err := w.GhClient.Organizations.List(w.Ctx, r.Login, &lOpts)
+	orgs, _, err := w.GhClient.Organizations.List(w.Ctx, u.Login, &lOpts)
 	if err != nil {
 		return err
 	}
 	for i := range orgs {
-		r.Orgs = append(r.Orgs, types.MyOrg{
+		u.Orgs = append(u.Orgs, types.MyOrg{
 			Name:  orgs[i].GetName(),
 			Login: orgs[i].GetLogin(),
 		})

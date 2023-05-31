@@ -24,6 +24,7 @@ func printUser(u *types.MyUser) {
 	printRepoToIssueMap("Issues commented", u.Login, u.IssuesCommented)
 	printRepoToIssueMap("PRs Merged", u.Login, u.PrsMerged)
 	printRepoToIssueMap("PRs Reviewed", u.Login, u.PrsReviewed)
+	printRepoToIssueMap("Commits", u.Login, u.Commits)
 }
 
 func printRepoToIssueMap(title string, login string, m map[types.RepoName][]types.MyIssue) {

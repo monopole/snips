@@ -29,8 +29,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\n")
 		os.Exit(1)
 	}
-	if len(args.User) == 0 {
-
+	if !args.JustGetToken && len(args.User) == 0 {
+		fmt.Fprintf(os.Stderr, readMeMd)
+		os.Exit(0)
 	}
 	if args.JustGetToken || args.Token == "" {
 		args.Token, err = oauth.GetAccessToken(&oauth.Params{
