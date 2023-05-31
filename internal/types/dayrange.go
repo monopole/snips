@@ -76,8 +76,9 @@ func MakeDayRange(dayStart string, dayEnd string, dayCount int) (*DayRange, erro
 		dayCount = defaultDayCount
 	}
 	if dayStart == "" {
-		// Default is today minus dayCount, revealing recent activity by default.
-		dayStartAsTime = time.Now().Round(24*time.Hour).AddDate(0, 0, -dayCount)
+		// Default is today minus dayCount-1, revealing recent activity by default.
+		// Subtracting 1 to assure that "today" is in the range.
+		dayStartAsTime = time.Now().Round(24*time.Hour).AddDate(0, 0, -(dayCount - 1))
 	} else {
 		var err error
 		dayStartAsTime, err = parseDate(dayStart)
