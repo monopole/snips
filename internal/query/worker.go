@@ -108,6 +108,11 @@ func (w *Worker) getUserRec(n string) (*types.MyUser, error) {
 	return &r, nil
 }
 
+// searchIssues uses the "search" endpoint, not the "issues" endpoint, because the goal is to
+// discover what the user has been doing with issues, rather than manage issues.
+// Compare the docs here:
+// https://docs.github.com/en/rest/search?apiVersion=2022-11-28#search-issues-and-pull-requests
+// https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28
 func (w *Worker) searchIssues(dateQualifier, qFmt string, args ...any) (issueList, error) {
 	query := fmt.Sprintf(
 		"%s:%s..%s %s",
@@ -129,6 +134,12 @@ func (w *Worker) searchIssues(dateQualifier, qFmt string, args ...any) (issueLis
 		opts.Page = resp.NextPage
 	}
 	return lst, nil
+}
+
+// grabCommits uses the "commits" endpoint...
+// https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
+func (w *Worker) grabCommits(dateQualifier, qFmt string, args ...any) (issueList, error) {
+	return nil, nil
 }
 
 func filterIssues(issues issueList, f filter) (result issueList) {
