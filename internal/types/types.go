@@ -4,23 +4,37 @@ import (
 	"time"
 )
 
-type RepoName string
+type RepoId struct {
+	Org  string
+	Repo string
+}
+
+func (id RepoId) String() string {
+	return id.Org + "/" + id.Repo
+}
 
 type MyOrg struct {
 	Name  string
 	Login string
 }
 
-// MyIssue holds issues, pull requests and commits.
-// In the case of commits, Title holds the first line of the commit message,
-// Updated holds the commit date, and Number is left empty.
-// TODO: In the commits section of the report, include only commits that lack a PR.
-// In the PR section, add links to commits if there's more than one commit in the PR.
+// MyIssue holds an issue or a pull request, since in GitHub those are the same at a high level.
 type MyIssue struct {
+	RepoId  *RepoId
 	Number  int
 	Title   string
 	HtmlUrl string
 	Updated time.Time
+}
+
+type MyCommit struct {
+	RepoId           *RepoId
+	Sha              string
+	Url              string
+	MessageFirstLine string
+	Committed        time.Time
+	Author           string
+	Pr               *MyIssue
 }
 
 type MyUser struct {
@@ -29,10 +43,10 @@ type MyUser struct {
 	Login           string
 	Email           string
 	Orgs            []MyOrg
-	IssuesCreated   map[RepoName][]MyIssue
-	IssuesClosed    map[RepoName][]MyIssue
-	IssuesCommented map[RepoName][]MyIssue
-	PrsMerged       map[RepoName][]MyIssue
-	PrsReviewed     map[RepoName][]MyIssue
-	Commits         map[RepoName][]MyIssue
+	IssuesCreated   map[RepoId][]MyIssue
+	IssuesClosed    map[RepoId][]MyIssue
+	IssuesCommented map[RepoId][]MyIssue
+	PrsReviewed     map[RepoId][]MyIssue
+	CommitsFromPrs  map[RepoId][]*MyCommit
+	CommitsBare     map[RepoId][]*MyCommit
 }

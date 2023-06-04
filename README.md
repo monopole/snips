@@ -6,8 +6,8 @@
 
 # snips
 
-The program gathers GitHub activity data about specific users over a common
-time period and prints it as markdown.
+Reports GitHub activity data about specific users over a common
+time period.
 
 ## Installation
 

@@ -22,12 +22,12 @@ func printUser(u *types.MyUser) {
 	printRepoToIssueMap("Issues created", u.Login, u.IssuesCreated)
 	printRepoToIssueMap("Issues fixed/closed", u.Login, u.IssuesClosed)
 	printRepoToIssueMap("Issues commented", u.Login, u.IssuesCommented)
-	printRepoToIssueMap("PRs Merged", u.Login, u.PrsMerged)
 	printRepoToIssueMap("PRs Reviewed", u.Login, u.PrsReviewed)
-	printRepoToIssueMap("Commits", u.Login, u.Commits)
+	printRepoToCommitMap("Commits Bare", u.Login, u.CommitsBare)
+	printRepoToCommitMap("Commits From Prs", u.Login, u.CommitsFromPrs)
 }
 
-func printRepoToIssueMap(title string, login string, m map[types.RepoName][]types.MyIssue) {
+func printRepoToIssueMap(title string, login string, m map[types.RepoId][]types.MyIssue) {
 	if len(m) < 1 {
 		return
 	}
@@ -39,6 +39,38 @@ func printRepoToIssueMap(title string, login string, m map[types.RepoName][]type
 		fmt.Printf("#### %s\n\n", repo)
 		for _, issue := range lst {
 			printIssue(&issue)
+		}
+		fmt.Println()
+	}
+	fmt.Println()
+}
+
+func printRepoToCommitMap(title string, login string, m map[types.RepoId][]*types.MyCommit) {
+	if len(m) < 1 {
+		return
+	}
+	fmt.Printf("\n### %s (%s)\n\n", title, login)
+	for repo, lst := range m {
+		if len(lst) < 1 {
+			continue
+		}
+		fmt.Printf("#### %s\n\n", repo)
+		for _, c := range lst {
+			fmt.Printf(
+				" - %s [%s](%s)",
+				c.Committed.Format(types.DayFormat2),
+				c.MessageFirstLine,
+				c.Url,
+			)
+			if c.Pr != nil {
+				fmt.Printf(
+					" (PR %d [%s](%s))",
+					c.Pr.Number,
+					c.Pr.Title,
+					c.Pr.HtmlUrl,
+				)
+			}
+			fmt.Println()
 		}
 		fmt.Println()
 	}

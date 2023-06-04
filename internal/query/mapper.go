@@ -10,72 +10,85 @@ import (
 	"github.com/monopole/snips/internal/types"
 )
 
-func makeMapOfRepoToIssueList(issues issueList) (map[types.RepoName][]types.MyIssue, error) {
-	rawMap := make(map[types.RepoName]issueList)
+type HasUrl interface {
+	GetHTMLURL() string
+}
+
+func yankRepoId(raw HasUrl) (types.RepoId, error) {
+	theUrl, err := url.Parse(raw.GetHTMLURL())
+	if err != nil {
+		return types.RepoId{}, err
+	}
+	path := strings.Split(theUrl.Path, "/")
+	if len(path) < 3 {
+		return types.RepoId{}, fmt.Errorf("issue url path too short in url: %q", raw)
+	}
+	return types.RepoId{
+		Org:  path[1],
+		Repo: path[2],
+	}, nil
+
+}
+func makeMapOfRepoToIssueList(issues issueList) (map[types.RepoId][]types.MyIssue, error) {
+	rawMap := make(map[types.RepoId]issueList)
 	seen := make(map[int64]*github.Issue)
 	for _, issue := range issues {
 		if _, ok := seen[issue.GetID()]; ok {
 			continue
 		}
 		seen[issue.GetID()] = issue
-		url, err := url.Parse(issue.GetHTMLURL())
+		id, err := yankRepoId(issue)
 		if err != nil {
 			return nil, err
 		}
-		path := strings.Split(url.Path, "/")
-		if len(path) < 3 {
-			return nil, fmt.Errorf("issue url path too short: %s", url.Path)
-		}
-		n := types.RepoName(path[2])
-		rawMap[n] = append(rawMap[n], issue)
+		rawMap[id] = append(rawMap[id], issue)
 	}
-	result := make(map[types.RepoName][]types.MyIssue)
-	for n, v := range rawMap {
+	result := make(map[types.RepoId][]types.MyIssue)
+	for id, v := range rawMap {
 		lst := make([]types.MyIssue, len(v))
 		for i, x := range sortIssuesByDateOfUpdate(v) {
 			lst[i] = types.MyIssue{
+				RepoId:  &id,
 				Number:  x.GetNumber(),
 				Title:   x.GetTitle(),
 				HtmlUrl: x.GetHTMLURL(),
 				Updated: x.GetUpdatedAt().Time,
 			}
 		}
-		result[n] = lst
+		result[id] = lst
 	}
 	return result, nil
 }
 
-func makeMapOfRepoToCommitList(commits commitList) (map[types.RepoName][]types.MyIssue, error) {
-	rawMap := make(map[types.RepoName]commitList)
+func makeMapOfRepoToCommitList(commits commitList) (map[types.RepoId][]*types.MyCommit, error) {
+	rawMap := make(map[types.RepoId]commitList)
 	seen := make(map[string]*github.CommitResult)
 	for _, commit := range commits {
 		if _, ok := seen[commit.GetSHA()]; ok {
 			continue
 		}
 		seen[commit.GetSHA()] = commit
-		url, err := url.Parse(commit.GetHTMLURL())
+		n, err := yankRepoId(commit)
 		if err != nil {
 			return nil, err
 		}
-		path := strings.Split(url.Path, "/")
-		if len(path) < 3 {
-			return nil, fmt.Errorf("commit url path too short: %s", url.Path)
-		}
-		n := types.RepoName(path[2])
 		rawMap[n] = append(rawMap[n], commit)
 	}
-	result := make(map[types.RepoName][]types.MyIssue)
-	for n, v := range rawMap {
-		lst := make([]types.MyIssue, len(v))
+	result := make(map[types.RepoId][]*types.MyCommit)
+	for id, v := range rawMap {
+		lst := make([]*types.MyCommit, len(v))
 		for i, x := range sortCommitsByDateOfCommit(v) {
-			lst[i] = types.MyIssue{
-				Number:  0,
-				Title:   upToFirstLfOrEnd(x.GetCommit().GetMessage()),
-				HtmlUrl: x.GetHTMLURL(),
-				Updated: x.GetCommit().GetCommitter().GetDate().Time,
+			lst[i] = &types.MyCommit{
+				RepoId:           &id,
+				Sha:              x.GetCommit().GetSHA(),
+				Url:              x.GetHTMLURL(),
+				MessageFirstLine: upToFirstLfOrEnd(x.GetCommit().GetMessage()),
+				Committed:        x.GetCommit().GetCommitter().GetDate().Time,
+				Author:           x.GetAuthor().GetLogin(),
+				Pr:               nil, // This commit might not be associated with a Pr.
 			}
 		}
-		result[n] = lst
+		result[id] = lst
 	}
 	return result, nil
 }

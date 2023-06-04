@@ -53,7 +53,7 @@ func (w *Worker) doQueriesOnUser(userName string) (*types.MyUser, error) {
 	if err = w.getIssues(myUser); err != nil {
 		return nil, err
 	}
-	if err = w.getCommits(myUser); err != nil {
+	if err = w.getAllCommitsInDateRange(myUser); err != nil {
 		return nil, err
 	}
 	return myUser, nil
@@ -61,66 +61,118 @@ func (w *Worker) doQueriesOnUser(userName string) (*types.MyUser, error) {
 
 func (w *Worker) getIssues(myUser *types.MyUser) (err error) {
 	var lst issueList
-	lst, err = w.searchIssues("created", "author:%s", myUser.Login)
-	if err != nil {
-		return err
-	}
-	myUser.IssuesCreated, err = makeMapOfRepoToIssueList(filterIssues(lst, rejectPrs))
-	if err != nil {
-		return err
-	}
-
-	lst, err = w.searchIssues("closed", "assignee:%s", myUser.Login)
-	if err != nil {
-		return err
-	}
-	myUser.IssuesClosed, err = makeMapOfRepoToIssueList(filterIssues(lst, rejectPrs))
-	if err != nil {
-		return err
-	}
-
-	lst, err = w.searchIssues("merged", "author:%s", myUser.Login)
-	if err != nil {
-		return err
-	}
-	myUser.PrsMerged, err = makeMapOfRepoToIssueList(filterIssues(lst, keepOnlyPrs))
-	if err != nil {
-		return err
-	}
-
-	lst, err = w.searchIssues("updated", "-author:%s commenter:%s", myUser.Login, myUser.Login)
-	if err != nil {
-		return err
-	}
-	{
-		var lst2 issueList
-		lst2, err = w.searchIssues("updated", "reviewed-by:%s", myUser.Login)
+	if getCommentingActivity := false; getCommentingActivity {
+		lst, err = w.searchIssues("updated", "-author:%s commenter:%s", myUser.Login, myUser.Login)
 		if err != nil {
 			return err
 		}
-		lst = append(lst, lst2...)
+		{
+			var lst2 issueList
+			lst2, err = w.searchIssues("updated", "reviewed-by:%s", myUser.Login)
+			if err != nil {
+				return err
+			}
+			lst = append(lst, lst2...)
+		}
+		myUser.IssuesCommented, err = makeMapOfRepoToIssueList(filterIssues(lst, rejectPrs))
+		myUser.PrsReviewed, err = makeMapOfRepoToIssueList(filterIssues(lst, keepOnlyPrs))
 	}
-	myUser.IssuesCommented, err = makeMapOfRepoToIssueList(filterIssues(lst, rejectPrs))
-	myUser.PrsReviewed, err = makeMapOfRepoToIssueList(filterIssues(lst, keepOnlyPrs))
+	if getIssuesToo := false; getIssuesToo {
+		lst, err = w.searchIssues("created", "author:%s", myUser.Login)
+		if err != nil {
+			return err
+		}
+		myUser.IssuesCreated, err = makeMapOfRepoToIssueList(filterIssues(lst, rejectPrs))
+		if err != nil {
+			return err
+		}
+
+		lst, err = w.searchIssues("closed", "assignee:%s", myUser.Login)
+		if err != nil {
+			return err
+		}
+		myUser.IssuesClosed, err = makeMapOfRepoToIssueList(filterIssues(lst, rejectPrs))
+		if err != nil {
+			return err
+		}
+	}
+	if getPrsToo := false; getPrsToo {
+		lst, err = w.searchIssues("merged", "author:%s", myUser.Login)
+		if err != nil {
+			return err
+		}
+		var prsMerged map[types.RepoId][]types.MyIssue
+		if prsMerged, err = makeMapOfRepoToIssueList(filterIssues(lst, keepOnlyPrs)); err != nil {
+			return err
+		}
+		commitMap := make(map[types.RepoId][]*types.MyCommit)
+		for repoId, prList := range prsMerged {
+			var allCommits []*types.MyCommit
+			for i := range prList {
+				var commitsForPr []*types.MyCommit
+				commitsForPr, err = w.getCommitsForPr(&prList[i])
+				if err != nil {
+					return err
+				}
+				allCommits = append(allCommits, commitsForPr...)
+			}
+			commitMap[repoId] = allCommits
+		}
+		myUser.CommitsFromPrs = commitMap
+	}
 	return nil
 }
 
 func (w *Worker) getUserRec(n string) (*types.MyUser, error) {
-	var r types.MyUser
 	user, _, err := w.GhClient.Users.Get(w.Ctx, n)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	r.Name = user.GetName()
-	r.Company = user.GetCompany()
-	r.Login = user.GetLogin()
-	r.Email = user.GetEmail()
-	return &r, nil
+	return &types.MyUser{
+		Name:    user.GetName(),
+		Company: user.GetCompany(),
+		Login:   user.GetLogin(),
+		Email:   user.GetEmail(),
+	}, nil
+}
+
+// getCommitsForPr
+// https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#list-commits-on-a-pull-request
+func (w *Worker) getCommitsForPr(prIssue *types.MyIssue) (result []*types.MyCommit, err error) {
+	var (
+		resp         *github.Response
+		commits, lst []*github.RepositoryCommit
+	)
+	opts := makeListOptions()
+	for {
+		lst, resp, err = w.GhClient.PullRequests.ListCommits(
+			w.Ctx, prIssue.RepoId.Org, prIssue.RepoId.Repo, prIssue.Number, &opts)
+		if err != nil {
+			return nil, err
+		}
+		commits = append(commits, lst...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+	result = make([]*types.MyCommit, len(lst))
+	for i, c := range lst {
+		result[i] = &types.MyCommit{
+			RepoId:           prIssue.RepoId,
+			Sha:              c.GetSHA(),
+			Url:              c.GetHTMLURL(),
+			MessageFirstLine: upToFirstLfOrEnd(c.GetCommit().GetMessage()),
+			Committed:        c.GetCommit().GetCommitter().GetDate().Time,
+			Author:           c.GetAuthor().GetLogin(),
+			Pr:               prIssue,
+		}
+	}
+	return result, nil
 }
 
 // searchIssues uses the "search" endpoint, not the "issues" endpoint, because the goal is to
 // discover what the user has been doing with issues, rather than manage issues.
-// Compare the docs here:
 // https://docs.github.com/en/rest/search?apiVersion=2022-11-28#search-issues-and-pull-requests
 // https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28
 func (w *Worker) searchIssues(dateQualifier, qFmt string, args ...any) (issueList, error) {
@@ -141,9 +193,9 @@ func (w *Worker) searchIssues(dateQualifier, qFmt string, args ...any) (issueLis
 	return lst, nil
 }
 
-// getCommits looks for non-merge commits
+// getAllCommitsInDateRange looks for non-merge commits
 // (merge commits usually aren't interesting).
-func (w *Worker) getCommits(myUser *types.MyUser) (err error) {
+func (w *Worker) getAllCommitsInDateRange(myUser *types.MyUser) (err error) {
 	var lst commitList
 	lst, err = w.searchCommits("author-date", "merge:false author:%s", myUser.Login)
 	if err != nil {
@@ -159,7 +211,7 @@ func (w *Worker) getCommits(myUser *types.MyUser) (err error) {
 		lst = append(lst, lst2...)
 		lst = removeDuplicateCommits(lst)
 	}
-	myUser.Commits, err = makeMapOfRepoToCommitList(lst)
+	myUser.CommitsBare, err = makeMapOfRepoToCommitList(lst)
 	return nil
 }
 
