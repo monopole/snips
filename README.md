@@ -6,8 +6,8 @@
 
 # snips
 
-The program gathers GitHub activity data about specific users over a common
-time period and prints it as markdown.
+Reports GitHub activity data about specific users over a common
+time period.
 
 ## Installation
 
@@ -26,7 +26,7 @@ snips \
     --domain github.acmecorp.com \
     --day-start 2020-Sep-01 \
     --day-count 30 \
-     torvalds thockin spf13 > /tmp/snips.md
+     alice bob charlie > /tmp/snips.md
 ```
 
 To get recent data for user `thockin` from [github.com]:

@@ -5,9 +5,9 @@ import (
 	"github.com/monopole/snips/internal/types"
 )
 
-func PrintReport(title string, domain string, dr *types.DayRange, users []*types.MyUser) {
+func PrintReport(title string, dr *types.DayRange, users []*types.MyUser) {
 	fmt.Printf("# %s\n\n", title)
-	fmt.Printf("_At %s, %s_\n\n", domain, dr.PrettyRange())
+	fmt.Printf("_%s_\n\n", dr.PrettyRange())
 	for i := range users {
 		printUser(users[i])
 	}
@@ -22,12 +22,11 @@ func printUser(u *types.MyUser) {
 	printRepoToIssueMap("Issues created", u.Login, u.IssuesCreated)
 	printRepoToIssueMap("Issues fixed/closed", u.Login, u.IssuesClosed)
 	printRepoToIssueMap("Issues commented", u.Login, u.IssuesCommented)
-	printRepoToIssueMap("PRs Merged", u.Login, u.PrsMerged)
 	printRepoToIssueMap("PRs Reviewed", u.Login, u.PrsReviewed)
-	printRepoToIssueMap("Commits", u.Login, u.Commits)
+	printRepoToCommitMap("Commits", u.Login, u.Commits)
 }
 
-func printRepoToIssueMap(title string, login string, m map[types.RepoName][]types.MyIssue) {
+func printRepoToIssueMap(title string, login string, m map[types.RepoId][]types.MyIssue) {
 	if len(m) < 1 {
 		return
 	}
@@ -39,6 +38,41 @@ func printRepoToIssueMap(title string, login string, m map[types.RepoName][]type
 		fmt.Printf("#### %s\n\n", repo)
 		for _, issue := range lst {
 			printIssue(&issue)
+		}
+		fmt.Println()
+	}
+	fmt.Println()
+}
+
+func printRepoToCommitMap(title string, login string, m map[types.RepoId][]*types.MyCommit) {
+	if len(m) < 1 {
+		return
+	}
+	fmt.Printf("\n### %s (%s)\n\n", title, login)
+	for repo, lst := range m {
+		if len(lst) < 1 {
+			continue
+		}
+		fmt.Printf("#### %s\n\n", repo)
+		for _, c := range lst {
+			fmt.Printf(
+				" - %s [%s](%s)",
+				c.Committed.Format(types.DayFormat2),
+				c.MessageFirstLine,
+				c.Url,
+			)
+			if c.Pr != nil {
+				fmt.Printf(
+					" (pull/[%d](%s)",
+					c.Pr.Number,
+					c.Pr.HtmlUrl,
+				)
+				if c.Pr.Title != c.MessageFirstLine {
+					fmt.Print(" ", c.Pr.Title)
+				}
+				fmt.Print(")")
+			}
+			fmt.Println()
 		}
 		fmt.Println()
 	}

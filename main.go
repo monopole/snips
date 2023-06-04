@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
+	"github.com/monopole/snips/internal/search"
 	"log"
 	"os"
 
@@ -61,17 +62,22 @@ func main() {
 		log.Fatalf("trouble making github client: %s", err.Error())
 	}
 	fmt.Fprintf(os.Stderr, "Working...  ")
+	se := search.MakeEngine(ctx, cl, args.DateRange)
 	result, err := (&query.Worker{
-		Users:     args.User,
-		DateRange: args.DateRange,
-		Ctx:       ctx,
-		GhClient:  cl,
+		Users:    args.User,
+		Se:       se,
+		Ctx:      ctx,
+		GhClient: cl,
 	}).DoIt()
 	fmt.Fprintln(os.Stderr)
 	if err != nil {
 		log.Fatalf("trouble doing queries: %s", err.Error())
 	}
-	report.PrintReport(args.Title, args.GhDomain, args.DateRange, result)
+	title := args.Title
+	if title == "" {
+		title = "Activity at " + args.GhDomain
+	}
+	report.PrintReport(title, args.DateRange, result)
 }
 
 func makeApiClient(ctx context.Context, domain string, token string) (*github.Client, error) {

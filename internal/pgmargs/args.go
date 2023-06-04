@@ -49,7 +49,7 @@ func ParseArgs() (*pgmArgs, error) {
 	flag.IntVar(&dayCount, flagDayCount, 0, "how many days, inclusive of start date")
 	flag.StringVar(&dayStart, flagDayStart, "", "the day to start, formatted as "+types.DateOptions())
 	flag.StringVar(&dayEnd, flagDayEnd, "", "the day to end, formatted as "+types.DateOptions()+", (default today)")
-	flag.StringVar(&result.Title, "title", "GitHub Activity", "the title of the report")
+	flag.StringVar(&result.Title, "title", "", "the title of the report")
 	flag.BoolVar(&result.JustGetToken, "get-gh-token", false, "force login, return the gh-token")
 	flag.StringVar(&result.CaPath, "ca-path", "", "local path to cert file for TLS in oauth dance")
 	flag.StringVar(&result.GhDomain, "domain", GithubPublic, "the github domain")
