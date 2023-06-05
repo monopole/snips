@@ -55,9 +55,11 @@ func printRepoToCommitMap(title string, login string, m map[types.RepoId][]*type
 		}
 		fmt.Printf("#### %s\n\n", repo)
 		for _, c := range lst {
+
 			fmt.Printf(
-				" - %s [%s](%s)",
+				" - `%s %s ` [%s](%s)",
 				c.Committed.Format(types.DayFormat2),
+				c.Sha[0:6],
 				c.MessageFirstLine,
 				c.Url,
 			)
@@ -81,7 +83,7 @@ func printRepoToCommitMap(title string, login string, m map[types.RepoId][]*type
 
 func printIssue(issue *types.MyIssue) {
 	fmt.Printf(
-		" - %s [%s](%s)\n",
+		" - `%s ` [%s](%s)\n",
 		issue.Updated.Format(types.DayFormat2),
 		issue.Title,
 		issue.HtmlUrl)

@@ -1,15 +1,20 @@
 package query
 
 import (
+	"log"
+	"time"
+
 	"github.com/google/go-github/v52/github"
 	"github.com/monopole/snips/internal/search"
 	"github.com/monopole/snips/internal/types"
 )
 
-func (w *Worker) findTheCommits(myUser *types.MyUser) (map[types.RepoId][]*types.MyCommit, error) {
+const prLookupWait = 1 * time.Second
+
+func (w *Worker) findCommits(myUser *types.MyUser) (map[types.RepoId][]*types.MyCommit, error) {
 	var lst1, lst2 []*types.MyCommit
 	var err error
-	if lst1, err = w.findCommitsAssociatedWithPrs(myUser); err != nil {
+	if lst1, err = w.findPrsThenFindCommits(myUser); err != nil {
 		return nil, err
 	}
 	if lst2, err = w.findAllCommits(myUser); err != nil {
@@ -26,7 +31,7 @@ func (w *Worker) findTheCommits(myUser *types.MyUser) (map[types.RepoId][]*types
 	return result, nil
 }
 
-func (w *Worker) findCommitsAssociatedWithPrs(myUser *types.MyUser) (commits []*types.MyCommit, err error) {
+func (w *Worker) findPrsThenFindCommits(myUser *types.MyUser) (commits []*types.MyCommit, err error) {
 	var lst []*github.Issue
 	lst, err = w.Se.SearchIssues("merged", "author:%s", myUser.Login)
 	if err != nil {
@@ -36,14 +41,18 @@ func (w *Worker) findCommitsAssociatedWithPrs(myUser *types.MyUser) (commits []*
 	if prsMerged, err = makeMapOfRepoToIssueList(filterIssues(lst, keepOnlyPrs)); err != nil {
 		return
 	}
-	for _, prList := range prsMerged {
+
+	for repo, prList := range prsMerged {
 		for i := range prList {
 			var commitsForPr []*types.MyCommit
-			commitsForPr, err = w.getCommitsForPr(&prList[i])
-			if err != nil {
-				return
+			time.Sleep(prLookupWait)
+			commitsForPr, err = w.getCommitsForPr(repo, &prList[i])
+			if err == nil {
+				commits = append(commits, commitsForPr...)
+			} else {
+				log.Printf("    Trouble with user %s, pr %s", myUser.Login, prList[i].HtmlUrl)
+				log.Printf("    Error: %s", err.Error())
 			}
-			commits = append(commits, commitsForPr...)
 		}
 	}
 	return
@@ -51,7 +60,7 @@ func (w *Worker) findCommitsAssociatedWithPrs(myUser *types.MyUser) (commits []*
 
 // getCommitsForPr finds commits by first finding a PR.
 // https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#list-commits-on-a-pull-request
-func (w *Worker) getCommitsForPr(prIssue *types.MyIssue) (result []*types.MyCommit, err error) {
+func (w *Worker) getCommitsForPr(repo types.RepoId, prIssue *types.MyIssue) (result []*types.MyCommit, err error) {
 	var (
 		resp         *github.Response
 		commits, lst []*github.RepositoryCommit
@@ -72,7 +81,7 @@ func (w *Worker) getCommitsForPr(prIssue *types.MyIssue) (result []*types.MyComm
 	result = make([]*types.MyCommit, len(lst))
 	for i, c := range lst {
 		result[i] = &types.MyCommit{
-			RepoId:           *prIssue.RepoId,
+			RepoId:           prIssue.RepoId,
 			Sha:              c.GetSHA(),
 			Url:              c.GetHTMLURL(),
 			MessageFirstLine: upToFirstLfOrEnd(c.GetCommit().GetMessage()),
@@ -84,8 +93,8 @@ func (w *Worker) getCommitsForPr(prIssue *types.MyIssue) (result []*types.MyComm
 	return result, nil
 }
 
-// findAllCommits looks for non-merge commits, and doesn't attempt to use PRs.
-// (merge commits usually aren't interesting).
+// findAllCommits finds all commits, including those not associated with a PR.
+// Deliberately excludes merge commits, as they are usually made by GH to merge a PR that wasn't recently rebased.
 func (w *Worker) findAllCommits(myUser *types.MyUser) (result []*types.MyCommit, err error) {
 	var lst []*github.CommitResult
 	lst, err = w.Se.SearchCommits("author-date", "merge:false author:%s", myUser.Login)

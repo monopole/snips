@@ -13,6 +13,10 @@ func (id RepoId) String() string {
 	return id.Org + "/" + id.Repo
 }
 
+func (id RepoId) Equals(other RepoId) bool {
+	return id.Org == other.Org && id.Repo == other.Repo
+}
+
 type MyOrg struct {
 	Name  string
 	Login string
@@ -20,7 +24,7 @@ type MyOrg struct {
 
 // MyIssue holds an issue or a pull request, since in GitHub those are the same at a high level.
 type MyIssue struct {
-	RepoId  *RepoId
+	RepoId  RepoId
 	Number  int
 	Title   string
 	HtmlUrl string

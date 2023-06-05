@@ -46,9 +46,11 @@ func makeMapOfRepoToIssueList(issues []*github.Issue) (map[types.RepoId][]types.
 	result := make(map[types.RepoId][]types.MyIssue)
 	for id, v := range rawMap {
 		lst := make([]types.MyIssue, len(v))
-		for i, x := range sortIssuesByDateOfUpdate(v) {
+		v = sortIssuesByDateOfUpdate(v)
+		for i := range v {
+			x := v[i]
 			lst[i] = types.MyIssue{
-				RepoId:  &id,
+				RepoId:  id,
 				Number:  x.GetNumber(),
 				Title:   x.GetTitle(),
 				HtmlUrl: x.GetHTMLURL(),

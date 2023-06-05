@@ -2,7 +2,9 @@ package query
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/google/go-github/v52/github"
@@ -34,11 +36,12 @@ func (w *Worker) DoIt() ([]*types.MyUser, error) {
 			// Avoid hitting API rate limit.
 			time.Sleep(pauseApiUs)
 		}
-		rec, err := w.doQueriesOnUser(n)
-		if err != nil {
-			log.Printf("trouble looking up user %s: %s\n", n, err.Error())
+		fmt.Fprintf(os.Stderr, "Working on user %s...\n", n)
+		if rec, err := w.doQueriesOnUser(n); err == nil {
+			result = append(result, rec)
+		} else {
+			log.Printf("trouble with user %s: %s\n", n, err.Error())
 		}
-		result = append(result, rec)
 	}
 	return result, nil
 }
@@ -59,7 +62,6 @@ func (w *Worker) doQueriesOnUser(userName string) (*types.MyUser, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	lst, err = w.Se.SearchIssues("closed", "assignee:%s", myUser.Login)
 	if err != nil {
 		return nil, err
@@ -71,7 +73,7 @@ func (w *Worker) doQueriesOnUser(userName string) (*types.MyUser, error) {
 	if myUser.IssuesCommented, myUser.PrsReviewed, err = w.findReviewsAndComments(myUser); err != nil {
 		return nil, err
 	}
-	if myUser.Commits, err = w.findTheCommits(myUser); err != nil {
+	if myUser.Commits, err = w.findCommits(myUser); err != nil {
 		return nil, err
 	}
 	return myUser, nil

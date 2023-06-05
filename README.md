@@ -3,15 +3,18 @@
 [token settings]: https://github.com/settings/tokens
 [obtaining a classic token]: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token#creating-a-personal-access-token-classic
 [pandoc]: https://pandoc.org/
+[`go`]: https://go.dev
 
 # snips
 
 Reports GitHub activity data about specific users over a common
 time period.
 
-## Installation
+### Installation
 
-Assuming you have the `go` tool installed and `$(go env GOPATH)/bin` on your `PATH`:
+Install the [`go`] tool and assure that `$(go env GOPATH)/bin` in on your `PATH`.
+
+Then:
 ```
 go install github.com/monopole/snips@latest
 ```
@@ -35,7 +38,8 @@ To get recent data for user `thockin` from [github.com]:
 snips thockin > /tmp/snips.md
 ```
 
-The time period is a start date and a day count that includes the start date.
+The time period is a start date and a day count that includes the start date,
+or a start and end date inclusive.
 
 The default value for `--day-count` is 14 (two weeks).
 
@@ -56,7 +60,8 @@ export GH_TOKEN=$(snips --domain github.acmecorp.com --get-gh-token)
 ```
 to login once, then use `snips` multiple times.
 
-This program will not return activity conducted in private repos.
+This program will not return activity conducted in private repos,
+unless the person being looked up matches the person who got the token.
 
 #### Fallback to classic flow
 
