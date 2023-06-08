@@ -7,12 +7,11 @@
 
 # snips
 
-Reports GitHub activity data about specific users over a common
-time period.
+Reports GitHub activity about specific users over a common time period.
 
 ### Installation
 
-Install the [`go`] tool and assure that `$(go env GOPATH)/bin` in on your `PATH`.
+Install the [`go`] tool and assure that `$(go env GOPATH)/bin` is on your `PATH`.
 
 Then:
 ```
@@ -22,7 +21,7 @@ go install github.com/monopole/snips@latest
 ## Usage
 
 To get data from a GitHub enterprise instance at _Acme Corporation_ 
-for several users over a common period of September in 2020:
+for several users during September 2020:
 
 ```
 snips \
@@ -38,8 +37,8 @@ To get recent data for user `thockin` from [github.com]:
 snips thockin > /tmp/snips.md
 ```
 
-The time period is a start date and a day count that includes the start date,
-or a start and end date inclusive.
+The time period is a start date and a day count,
+or a start and an end date, inclusive.
 
 The default value for `--day-count` is 14 (two weeks).
 
@@ -60,7 +59,7 @@ export GH_TOKEN=$(snips --domain github.acmecorp.com --get-gh-token)
 ```
 to login once, then use `snips` multiple times.
 
-This program will not return activity conducted in private repos,
+This program cannot return activity conducted in private repos,
 unless the person being looked up matches the person who got the token.
 
 #### Fallback to classic flow
