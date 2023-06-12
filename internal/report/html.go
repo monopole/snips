@@ -44,10 +44,26 @@ func labeledIssueMap(l string, m map[types.RepoId][]types.MyIssue) interface{} {
 }
 
 const (
+	cssStyle = `
+<style>
+.oneIssue {
+  margin-left: 10px;
+}
+.issueMap {
+  margin-left: 20px;
+  padding: 10px;
+  background-color: #F8F8FF;
+}
+.userData {
+  margin-left: 10px;
+  padding-bottom: 10px;
+}
+</style>
+`
 	tmplHtmlNameIssue = "tmplHtmlNameIssue"
 	tmplHtmlBodyIssue = `
 {{define "` + tmplHtmlNameIssue + `" -}}
-<code>{{snipDate .Updated}}</code> <a href="{{.HtmlUrl}}"> {{.Title}} </a>
+<code>{{snipDate .Updated}}</code> &nbsp; <a href="{{.HtmlUrl}}"> {{.Title}} </a>
 {{- end}}
 `
 	tmplHtmlNameCommit = "tmplHtmlNameCommit"
@@ -57,19 +73,18 @@ const (
 <a href="{{.Url}}">{{shaSmall .Sha}}</a>
 {{- if .Pr}} (pull/<a href="{{.Pr.HtmlUrl}}">{{.Pr.Number}}</a>){{end}}
 </code>
-{{.MessageFirstLine}}
+&nbsp; {{.MessageFirstLine}}
 {{- end}}
 `
 	tmplHtmlNameRepoToIssueMap = "tmplHtmlNameRepoToIssueMap"
 	tmplHtmlBodyRepoToIssueMap = `
 {{define "` + tmplHtmlNameRepoToIssueMap + `" -}}
-<div class="issueSty">
+<div class="issueMap">
 {{range $repo, $list := . -}}
 <h4> {{$repo}} </h4>
-<ul>{{range $i, $issue := $list }}
-<li> {{template "` + tmplHtmlNameIssue + `" $issue}} </li>
+{{range $i, $issue := $list }}
+<div class="oneIssue"> {{template "` + tmplHtmlNameIssue + `" $issue}} </div>
 {{- end}}
-</ul>
 {{- end}}
 </div>
 {{- end}}
@@ -77,13 +92,12 @@ const (
 	tmplHtmlNameRepoToCommitMap = "tmplHtmlNameRepoToCommitMap"
 	tmplHtmlBodyRepoToCommitMap = `
 {{define "` + tmplHtmlNameRepoToCommitMap + `" -}}
-<div class="issueSty">
+<div class="issueMap">
 {{range $repo, $list := . -}}
 <h4> {{$repo}} </h4>
-<ul>{{range $i, $issue := $list }}
-<li> {{template "` + tmplHtmlNameCommit + `" $issue}} </li>
+{{range $i, $issue := $list }}
+<div class="oneIssue"> {{template "` + tmplHtmlNameCommit + `" $issue}} </div>
 {{- end}}
-</ul>
 {{- end}}
 </div>
 {{- end}}
@@ -124,7 +138,8 @@ const (
 	tmplHtmlNameUser = "tmplHtmlNameUser"
 	tmplHtmlBodyUser = `
 {{define "` + tmplHtmlNameUser + `" -}}
-<h2> {{.Name}} {{if .Email}} (<em>{{.Email}}</em>){{else}}({{.Login}}{{end}}</h2>
+<h2> {{.Name}} (<em>{{if .Email}}{{.Email}}{{else}}{{.Login}}{{end}}</em>)</h2>
+<div class="userData">
 {{if .Orgs}}
   {{template "` + tmplHtmlNameOrganizations + `" .Orgs}}
 {{else}}
@@ -134,6 +149,8 @@ const (
 {{template "` + tmplHtmlNameLabelledIssueMap + `" (labeledIssueMap "Issues Closed" .IssuesClosed)}}
 {{template "` + tmplHtmlNameLabelledIssueMap + `" (labeledIssueMap "PRs Reviewed" .PrsReviewed)}}
 {{template "` + tmplHtmlNameLabelledCommitMap + `" (labeledCommitMap "Commits" .Commits)}}
+</div>
+<hr>
 {{end}}
 `
 	tmplHtmlNameSnipsMain = "tmplHtmlNameSnipsMain"
@@ -143,13 +160,8 @@ const (
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>{{.Title}}</title>
-    <style>
-     .issueSty {
-       margin-left: 50px;
-       background-color: #F8F8FF;
-     }
-    </style>
+    <title>{{.Title}}</title>` +
+		cssStyle + `
   </head>
   <body>
     <h1>{{.Title}}</h1>

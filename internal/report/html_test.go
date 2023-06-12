@@ -83,7 +83,7 @@ func Test_WriteHtmlIssue(t *testing.T) {
 	}{
 		"t1": {
 			issue:  issue1,
-			result: "<code>2019-Jun-13</code> <a href=\"https://github.tesla.com/design-technology/3dx/pull/636\"> Fry the older bananas </a>",
+			result: "<code>2019-Jun-13</code> &nbsp; <a href=\"https://github.tesla.com/design-technology/3dx/pull/636\"> Fry the older bananas </a>",
 		},
 	}
 	for name, tt := range tests {
@@ -102,7 +102,10 @@ func Test_WriteHtmlCommit(t *testing.T) {
 	}{
 		"t1": {
 			commit: commit1,
-			result: `<code>2019-Jun-13 <a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578">fc25519</a></code> Fry the older bananas (pull/<a href="https://github.tesla.com/design-technology/3dx/pull/636">600</a>)`,
+			result: `<code>2019-Jun-13
+<a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578">fc25519</a> (pull/<a href="https://github.tesla.com/design-technology/3dx/pull/636">600</a>)
+</code>
+&nbsp; Fry the older bananas`,
 		},
 	}
 	for name, tt := range tests {
@@ -130,16 +133,16 @@ func Test_WriteHtmlLabelledIssueMap(t *testing.T) {
 				repoId1: {issue1, issue2},
 				repoId2: {issue1, issue2},
 			},
-			result: `<h3> issues reviewed </h3>
+			result: `<h3> issues reviewed: </h3>
+<div class="issueMap">
 <h4> bitCoinLosers/jupiterToast </h4>
-  <ul>
-    <li> <code>2019-Jun-13</code> <a href="https://github.tesla.com/design-technology/3dx/pull/636"> Fry the older bananas </a> </li>
-    <li> <code>2019-Jun-15</code> <a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2555"> Indemnify the cheese eaters </a> </li>
-  </ul><h4> federationOfPlanets/marsToilet </h4>
-  <ul>
-    <li> <code>2019-Jun-13</code> <a href="https://github.tesla.com/design-technology/3dx/pull/636"> Fry the older bananas </a> </li>
-    <li> <code>2019-Jun-15</code> <a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2555"> Indemnify the cheese eaters </a> </li>
-  </ul>`,
+
+<div class="oneIssue"> <code>2019-Jun-13</code> &nbsp; <a href="https://github.tesla.com/design-technology/3dx/pull/636"> Fry the older bananas </a> </div>
+<div class="oneIssue"> <code>2019-Jun-15</code> &nbsp; <a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2555"> Indemnify the cheese eaters </a> </div><h4> federationOfPlanets/marsToilet </h4>
+
+<div class="oneIssue"> <code>2019-Jun-13</code> &nbsp; <a href="https://github.tesla.com/design-technology/3dx/pull/636"> Fry the older bananas </a> </div>
+<div class="oneIssue"> <code>2019-Jun-15</code> &nbsp; <a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2555"> Indemnify the cheese eaters </a> </div>
+</div>`,
 		},
 	}
 	for name, tt := range tests {
@@ -150,6 +153,7 @@ func Test_WriteHtmlLabelledIssueMap(t *testing.T) {
 		})
 	}
 }
+
 func Test_WriteHtmlLabelledCommitMap(t *testing.T) {
 	tests := map[string]struct {
 		l      string
@@ -165,12 +169,19 @@ func Test_WriteHtmlLabelledCommitMap(t *testing.T) {
 			m: map[types.RepoId][]*types.MyCommit{
 				repoId1: {&commit1, &commit2},
 			},
-			result: `<h3> commits </h3>
+			result: `<h3> commits: </h3>
+<div class="issueMap">
 <h4> federationOfPlanets/marsToilet </h4>
-  <ul>
-    <li> <code>2019-Jun-13 <a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578">fc25519</a></code> Fry the older bananas (pull/<a href="https://github.tesla.com/design-technology/3dx/pull/636">600</a>) </li>
-    <li> <code>2019-Jun-13 <a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/bbd9f61f0c1bb26e58641f15da872afce9f6c1ec">bbd9f61</a></code> Fry the older bananas </li>
-  </ul>`,
+
+<div class="oneIssue"> <code>2019-Jun-13
+<a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578">fc25519</a> (pull/<a href="https://github.tesla.com/design-technology/3dx/pull/636">600</a>)
+</code>
+&nbsp; Fry the older bananas </div>
+<div class="oneIssue"> <code>2019-Jun-13
+<a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/bbd9f61f0c1bb26e58641f15da872afce9f6c1ec">bbd9f61</a>
+</code>
+&nbsp; Fry the older bananas </div>
+</div>`,
 		},
 	}
 	for name, tt := range tests {
