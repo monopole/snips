@@ -5,11 +5,11 @@ import (
 	"github.com/monopole/snips/internal/types"
 )
 
-func PrintReport(title string, dr *types.DayRange, users []*types.MyUser) {
-	fmt.Printf("# %s\n\n", title)
-	fmt.Printf("_%s_\n\n", dr.PrettyRange())
-	for i := range users {
-		printUser(users[i])
+func PrintReport(r *types.Report) {
+	fmt.Printf("# %s\n\n", r.Title)
+	fmt.Printf("_%s_\n\n", r.Dr.PrettyRange())
+	for i := range r.Users {
+		printUser(r.Users[i])
 	}
 }
 

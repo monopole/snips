@@ -21,6 +21,7 @@ const (
 	flagDayEnd   = "day-end"
 	flagDayCount = "day-count"
 	flagNoEcho   = "suppress-token-echo"
+	flagMarkdown = "markdown"
 )
 
 // pgmArgs holds clean arguments from the command line.
@@ -32,6 +33,7 @@ type pgmArgs struct {
 	ClientId     string
 	Token        string
 	NoTokenEcho  bool
+	Markdown     bool
 	JustGetToken bool
 	CaPath       string
 }
@@ -51,6 +53,7 @@ func ParseArgs() (*pgmArgs, error) {
 	flag.StringVar(&dayEnd, flagDayEnd, "", "the day to end, formatted as "+types.DateOptions()+", (default today)")
 	flag.StringVar(&result.Title, "title", "", "the title of the report")
 	flag.BoolVar(&result.JustGetToken, "get-gh-token", false, "force login, return the gh-token")
+	flag.BoolVar(&result.Markdown, flagMarkdown, false, "emit markdown instead of HTML")
 	flag.StringVar(&result.CaPath, "ca-path", "", "local path to cert file for TLS in oauth dance")
 	flag.StringVar(&result.GhDomain, "domain", GithubPublic, "the github domain")
 	flag.StringVar(&result.ClientId, "client-id", "", "the oauth clientID")

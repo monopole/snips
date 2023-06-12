@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/monopole/snips/internal/search"
+	"github.com/monopole/snips/internal/types"
 	"log"
 	"os"
 
@@ -74,7 +75,22 @@ func main() {
 	if title == "" {
 		title = "Activity at " + args.GhDomain
 	}
-	report.PrintReport(title, args.DateRange, result)
+	if args.Markdown {
+		report.PrintReport(&types.Report{
+			Title: title,
+			Dr:    args.DateRange,
+			Users: result,
+		})
+	} else {
+		err = report.WriteHtmlReport(os.Stdout, &types.Report{
+			Title: title,
+			Dr:    args.DateRange,
+			Users: result,
+		})
+		if err != nil {
+			log.Fatalf("trouble rendering html: %s", err.Error())
+		}
+	}
 }
 
 func makeApiClient(ctx context.Context, domain string, token string) (*github.Client, error) {

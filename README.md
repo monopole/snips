@@ -28,13 +28,26 @@ snips \
     --domain github.acmecorp.com \
     --day-start 2020-Sep-01 \
     --day-count 30 \
-     alice bob charlie > /tmp/snips.md
+     alice bob charlie > /tmp/snips.html
 ```
+
+The report is emitted as HTML to `stdout`.
+
+To render directly to a browser, try:
+
+```
+snips {args} |\
+    google-chrome "data:text/html;base64,$(base64 -w 0 <&0)"
+```
+
+Use `--markdown` to get markdown instead of HTML.
+
+#### Taking a recent snapshot
 
 To get recent data for user `thockin` from [github.com]:
 
 ```
-snips thockin > /tmp/snips.md
+snips thockin > /tmp/snips.html
 ```
 
 The time period is a start date and a day count,
@@ -45,6 +58,7 @@ The default value for `--day-count` is 14 (two weeks).
 If `--day-start` is omitted, a value of _today_ minus `day-count` is used.
 
 The default `--domain` is `github.com`.
+
 
 ### Authentication Token
 
@@ -81,20 +95,3 @@ as if it had been created via the OAuth device flow.
 Protect this classic token like a password. During creation,
 give it an expiration period, and/or delete it after
 use at the [token settings] page.
-
-
-### Rendered Output
-
-To render the output to a browser, try [pandoc].
-
-With no arguments, `pandoc` converts markdown to HTML.
-
-```
-sudo apt install pandoc
-```
-
-```
-snips --day-start 2020-01-01 --day-count 30 monopole |\
-    pandoc |\
-    google-chrome "data:text/html;base64,$(base64 -w 0 <&0)"
-```
