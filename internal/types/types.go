@@ -53,3 +53,9 @@ type MyUser struct {
 	PrsReviewed     map[RepoId][]MyIssue
 	Commits         map[RepoId][]*MyCommit
 }
+
+type Report struct {
+	Title string
+	Dr    *DayRange
+	Users []*MyUser
+}

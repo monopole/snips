@@ -9,10 +9,11 @@ import (
 const (
 	DayFormat1      = "2006-01-02"
 	DayFormat2      = "2006-Jan-02"
+	DayFormat3      = "2006/01/02"
 	defaultDayCount = 14 // two weeks
 )
 
-// DayRange is a specific calendar day (YYYY/MM/DD) paired with a day count.
+// DayRange is a specific calendar day (year, month, day number) paired with a day count.
 // The day count is inclusive of the specific day.
 // A day count less than one is illegal; there must be at least one day in the range.
 // The end calendar day is computed from the y/m/d start date, and used in
@@ -66,7 +67,6 @@ func makeDayRangeWithExplicitEndDate(dayStart string, dayEnd string, dayCount in
 }
 
 // MakeDayRange makes an instance of DayRange from the given arguments.
-// Date strings must be in the format YYYY/MM/DD.
 func MakeDayRange(dayStart string, dayEnd string, dayCount int) (*DayRange, error) {
 	if dayEnd != "" {
 		return makeDayRangeWithExplicitEndDate(dayStart, dayEnd, dayCount)
@@ -132,7 +132,7 @@ func parseDate(v string) (time.Time, error) {
 }
 
 func AllDateFormats() []string {
-	return []string{DayFormat1, DayFormat2}
+	return []string{DayFormat1, DayFormat2, DayFormat3}
 }
 
 func DateOptions() string {
