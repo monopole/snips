@@ -21,7 +21,7 @@ const (
 	flagDayEnd   = "day-end"
 	flagDayCount = "day-count"
 	flagNoEcho   = "suppress-token-echo"
-	flagMarkdown = "markdown"
+	flagMarkdown = "md"
 )
 
 // pgmArgs holds clean arguments from the command line.

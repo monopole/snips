@@ -5,18 +5,16 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
+	"github.com/monopole/snips/internal/query"
 	"github.com/monopole/snips/internal/search"
-	"github.com/monopole/snips/internal/types"
 	"log"
 	"os"
-
-	"github.com/monopole/snips/internal/report"
-
-	"github.com/monopole/snips/internal/query"
 
 	"github.com/google/go-github/v52/github"
 	"github.com/monopole/snips/internal/oauth"
 	"github.com/monopole/snips/internal/pgmargs"
+	"github.com/monopole/snips/internal/report"
+	"github.com/monopole/snips/internal/types"
 	"golang.org/x/oauth2"
 )
 
@@ -57,39 +55,39 @@ func main() {
 		fmt.Fprintf(os.Stderr, readMeMd)
 		os.Exit(1)
 	}
-	ctx := context.Background()
-	cl, err := makeApiClient(ctx, args.GhDomain, args.Token)
-	if err != nil {
-		log.Fatalf("trouble making github client: %s", err.Error())
-	}
-	result, err := (&query.Worker{
-		Users:    args.User,
-		Se:       search.MakeEngine(ctx, cl, args.DateRange),
-		Ctx:      ctx,
-		GhClient: cl,
-	}).DoIt()
-	if err != nil {
-		log.Fatalf("trouble doing queries: %s", err.Error())
-	}
-	title := args.Title
-	if title == "" {
-		title = "Activity at " + args.GhDomain
-	}
-	if args.Markdown {
-		report.PrintReport(&types.Report{
-			Title: title,
-			Dr:    args.DateRange,
-			Users: result,
-		})
-	} else {
-		err = report.WriteHtmlReport(os.Stdout, &types.Report{
-			Title: title,
-			Dr:    args.DateRange,
-			Users: result,
-		})
+	var users []*types.MyUser
+	{
+		ctx := context.Background()
+		cl, err := makeApiClient(ctx, args.GhDomain, args.Token)
 		if err != nil {
-			log.Fatalf("trouble rendering html: %s", err.Error())
+			log.Fatalf("trouble making github client: %s", err.Error())
 		}
+		users, err = (&query.Worker{
+			Users:    args.User,
+			Se:       search.MakeEngine(ctx, cl, args.DateRange),
+			Ctx:      ctx,
+			GhClient: cl,
+		}).DoIt()
+		if err != nil {
+			log.Fatalf("trouble doing queries: %s", err.Error())
+		}
+	}
+	write := report.WriteHtmlReport
+	if args.Markdown {
+		write = report.WriteMdReport
+	}
+	err = write(os.Stdout, &types.Report{
+		Title: func() string {
+			if args.Title != "" {
+				return args.Title
+			}
+			return "Activity at " + args.GhDomain
+		}(),
+		Dr:    args.DateRange,
+		Users: users,
+	})
+	if err != nil {
+		log.Fatalf("trouble rendering html: %s", err.Error())
 	}
 }
 

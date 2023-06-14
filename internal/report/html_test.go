@@ -2,7 +2,6 @@ package report_test
 
 import (
 	"bytes"
-	"fmt"
 	. "github.com/monopole/snips/internal/report"
 	"github.com/monopole/snips/internal/types"
 	"github.com/stretchr/testify/assert"
@@ -232,9 +231,9 @@ func Test_WriteHtmlReport(t *testing.T) {
 				Dr:    dr,
 				Users: []*types.MyUser{&tt.dude},
 			}))
-			fmt.Println("-------------------")
-			fmt.Println(b.String())
-			fmt.Println("-------------------")
+			//fmt.Println("-------------------")
+			//fmt.Println(b.String())
+			//fmt.Println("-------------------")
 			//assert.Equal(t, tt.result, b.String())
 		})
 	}

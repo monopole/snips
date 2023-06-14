@@ -27,8 +27,26 @@ func makeFuncMap() map[string]interface{} {
 		},
 		"labeledIssueMap":  labeledIssueMap,
 		"labeledCommitMap": labeledCommitMap,
+		"mapTotalCommits": func(m map[types.RepoId][]*types.MyCommit) int {
+			c := 0
+			for _, v := range m {
+				c += len(v)
+			}
+			return c
+		},
+		"mapTotalIssues": func(m map[types.RepoId][]types.MyIssue) int {
+			c := 0
+			for _, v := range m {
+				c += len(v)
+			}
+			return c
+		},
+		"bigEnuf": func(s int) bool {
+			return s > 5
+		},
 	}
 }
+
 func labeledCommitMap(l string, m map[types.RepoId][]*types.MyCommit) interface{} {
 	return &struct {
 		Label string
@@ -58,8 +76,20 @@ const (
   margin-left: 10px;
   padding-bottom: 10px;
 }
+.count {
+  color: gray;
+  font-style: italic;
+}
 </style>
 `
+
+	tmplHtmlNameCount = "tmplHtmlNameCount"
+	tmplHtmlBodyCount = `
+{{define "` + tmplHtmlNameCount + `" -}}
+{{if bigEnuf .}} <span class="count"> ({{.}}) </span> {{end -}}
+{{- end}}
+`
+
 	tmplHtmlNameIssue = "tmplHtmlNameIssue"
 	tmplHtmlBodyIssue = `
 {{define "` + tmplHtmlNameIssue + `" -}}
@@ -81,7 +111,7 @@ const (
 {{define "` + tmplHtmlNameRepoToIssueMap + `" -}}
 <div class="issueMap">
 {{range $repo, $list := . -}}
-<h4> {{$repo}} </h4>
+<h4> {{$repo}} {{template "` + tmplHtmlNameCount + `" len $list}}</h4>
 {{range $i, $issue := $list }}
 <div class="oneIssue"> {{template "` + tmplHtmlNameIssue + `" $issue}} </div>
 {{- end}}
@@ -94,7 +124,7 @@ const (
 {{define "` + tmplHtmlNameRepoToCommitMap + `" -}}
 <div class="issueMap">
 {{range $repo, $list := . -}}
-<h4> {{$repo}} </h4>
+<h4> {{$repo}} {{template "` + tmplHtmlNameCount + `" len $list}}</h4>
 {{range $i, $issue := $list }}
 <div class="oneIssue"> {{template "` + tmplHtmlNameCommit + `" $issue}} </div>
 {{- end}}
@@ -107,7 +137,7 @@ const (
 	tmplHtmlBodyLabelledIssueMap = `
 {{define "` + tmplHtmlNameLabelledIssueMap + `" -}}
 {{if .M -}}
-<h3> {{.Label}}: </h3>
+<h3> {{.Label}} {{template "` + tmplHtmlNameCount + `" (mapTotalIssues .M)}}: </h3>
 {{template "` + tmplHtmlNameRepoToIssueMap + `" .M}}
 {{- else -}}
 <h3> No {{.Label}} </h3>
@@ -118,7 +148,7 @@ const (
 	tmplHtmlBodyLabelledCommitMap = `
 {{define "` + tmplHtmlNameLabelledCommitMap + `" -}}
 {{if .M -}}
-<h3> {{.Label}}: </h3>
+<h3> {{.Label}} {{template "` + tmplHtmlNameCount + `" (mapTotalCommits .M)}}: </h3>
 {{template "` + tmplHtmlNameRepoToCommitMap + `" .M}}
 {{- else -}}
 <h3> No {{.Label}} </h3>
@@ -177,11 +207,10 @@ const (
 `
 )
 
-// makeHtmlTemplate returns a parsed template for reporting a diff.
 func makeHtmlTemplate() *template.Template {
 	return template.Must(
 		template.New("main").Funcs(makeFuncMap()).Parse(
-			tmplHtmlBodyIssue + tmplHtmlBodyCommit + tmplHtmlBodyOrganizations +
+			tmplHtmlBodyCount + tmplHtmlBodyIssue + tmplHtmlBodyCommit + tmplHtmlBodyOrganizations +
 				tmplHtmlBodyRepoToIssueMap + tmplHtmlBodyRepoToCommitMap +
 				tmplHtmlBodyLabelledIssueMap + tmplHtmlBodyLabelledCommitMap +
 				tmplHtmlBodyUser + tmplHtmlBodySnipsMain))
@@ -205,8 +234,4 @@ func WriteHtmlLabelledIssueMap(w io.Writer, l string, m map[types.RepoId][]types
 
 func WriteHtmlLabelledCommitMap(w io.Writer, l string, m map[types.RepoId][]*types.MyCommit) error {
 	return makeHtmlTemplate().ExecuteTemplate(w, tmplHtmlNameLabelledCommitMap, labeledCommitMap(l, m))
-}
-
-func WriteHtmlUser(w io.Writer, r *types.MyUser) error {
-	return makeHtmlTemplate().ExecuteTemplate(w, tmplHtmlNameUser, r)
 }

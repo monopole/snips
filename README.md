@@ -5,22 +5,37 @@
 [pandoc]: https://pandoc.org/
 [`go`]: https://go.dev
 
+
+<!--
+ TODO
+
+ * Add jira access via https://github.com/ctreminiom/go-atlassian
+-->
+
+
 # snips
 
-Reports GitHub activity about specific users over a common time period.
-
-### Installation
-
-Install the [`go`] tool and assure that `$(go env GOPATH)/bin` is on your `PATH`.
-
-Then:
-```
-go install github.com/monopole/snips@latest
-```
+Reports GitHub activity about specific users over a common period of days.
 
 ## Usage
 
-To get data from a GitHub enterprise instance at _Acme Corporation_ 
+To get recent data for user _thockin_ from [github.com]:
+
+```
+snips thockin > /tmp/snips.html
+```
+
+The report is emitted as HTML to `stdout`.
+
+> A one-liner to render to chrome on ubuntu:
+>
+> ```
+> snips {args} | google-chrome "data:text/html;base64,$(base64 -w 0 <&0)"
+> ```
+
+Use `--md` to get markdown instead.
+
+To get data from a GitHub enterprise instance at _Acme Corporation_
 for several users during September 2020:
 
 ```
@@ -31,36 +46,24 @@ snips \
      alice bob charlie > /tmp/snips.html
 ```
 
-The report is emitted as HTML to `stdout`.
+The time period is measured in _days_,
+and can be specified  using any two of the
+three _day_ flags:
+`--day-start`, `--day-end`, `--day-count`.
+The default day _count_ is _14_ (two weeks),
+and the default day _end_ is _today_.
 
-To render directly to a browser, try:
+## Installation
 
+Install the [`go`] tool and
+assure that `$(go env GOPATH)/bin` is on your `PATH`.
+
+Then:
 ```
-snips {args} |\
-    google-chrome "data:text/html;base64,$(base64 -w 0 <&0)"
-```
-
-Use `--markdown` to get markdown instead of HTML.
-
-#### Taking a recent snapshot
-
-To get recent data for user `thockin` from [github.com]:
-
-```
-snips thockin > /tmp/snips.html
+go install github.com/monopole/snips@latest
 ```
 
-The time period is a start date and a day count,
-or a start and an end date, inclusive.
-
-The default value for `--day-count` is 14 (two weeks).
-
-If `--day-start` is omitted, a value of _today_ minus `day-count` is used.
-
-The default `--domain` is `github.com`.
-
-
-### Authentication Token
+## Authentication
 
 An [OAuth device flow] for the given `--domain` is triggered when either
 
@@ -72,11 +75,6 @@ Use this
 export GH_TOKEN=$(snips --domain github.acmecorp.com --get-gh-token)
 ```
 to login once, then use `snips` multiple times.
-
-This program cannot return activity conducted in private repos,
-unless the person being looked up matches the person who got the token.
-
-#### Fallback to classic flow
 
 If the OAuth flow fails for some reason (e.g.
 this program has no clientId for the `--domain` being used),
