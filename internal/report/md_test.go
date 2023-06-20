@@ -63,14 +63,16 @@ func Test_WriteMdLabelledIssueMap(t *testing.T) {
 				repoId2: {issue1, issue2},
 			},
 			result: `### issues reviewed:
+
 #### bitCoinLosers/jupiterToast
 
-` + "`2019-Jun-13`" + ` [Fry the older bananas](https://github.tesla.com/design-technology/3dx/pull/636)
-` + "`2019-Jun-15`" + ` [Indemnify the cheese eaters](https://github.tesla.com/design-technology/argocd-manifests/pull/2555)
+  - ` + "`2019-Jun-13`" + ` [Fry the older bananas](https://github.tesla.com/design-technology/3dx/pull/636)
+  - ` + "`2019-Jun-15`" + ` [Indemnify the cheese eaters](https://github.tesla.com/design-technology/argocd-manifests/pull/2555)
+
 #### federationOfPlanets/marsToilet
 
-` + "`2019-Jun-13`" + ` [Fry the older bananas](https://github.tesla.com/design-technology/3dx/pull/636)
-` + "`2019-Jun-15`" + ` [Indemnify the cheese eaters](https://github.tesla.com/design-technology/argocd-manifests/pull/2555)
+  - ` + "`2019-Jun-13`" + ` [Fry the older bananas](https://github.tesla.com/design-technology/3dx/pull/636)
+  - ` + "`2019-Jun-15`" + ` [Indemnify the cheese eaters](https://github.tesla.com/design-technology/argocd-manifests/pull/2555)
 `,
 		},
 	}
@@ -99,10 +101,11 @@ func Test_WriteMdLabelledCommitMap(t *testing.T) {
 				repoId1: {&commit1, &commit2},
 			},
 			result: `### commits
+
 #### federationOfPlanets/marsToilet
 
-` + "`2019-Jun-13` [`fc25519`]" + `(https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578) (pull/[600](https://github.tesla.com/design-technology/3dx/pull/636)) Fry the older bananas
-` + "`2019-Jun-13` [`bbd9f61`]" + `(https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/bbd9f61f0c1bb26e58641f15da872afce9f6c1ec) Fry the older bananas
+` + " - `2019-Jun-13` [`fc25519`]" + `(https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578) (pull/[600](https://github.tesla.com/design-technology/3dx/pull/636)) Fry the older bananas
+` + " - `2019-Jun-13` [`bbd9f61`]" + `(https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/bbd9f61f0c1bb26e58641f15da872afce9f6c1ec) Fry the older bananas
 `,
 		},
 	}
@@ -150,9 +153,10 @@ func Test_WriteMdReport(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			var b bytes.Buffer
 			assert.NoError(t, WriteMdReport(&b, &types.Report{
-				Title: "hello I am the report title",
-				Dr:    dr,
-				Users: []*types.MyUser{&tt.dude},
+				Title:  "hello I am the report title",
+				Domain: "github.com",
+				Dr:     dr,
+				Users:  []*types.MyUser{&tt.dude},
 			}))
 			//fmt.Println("+++++++++++++++++++++++++++++++++++++++++++++++++")
 			//fmt.Println(b.String())

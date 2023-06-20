@@ -46,19 +46,20 @@ snips \
      alice bob charlie > /tmp/snips.html
 ```
 
-The time period is measured in _days_,
-and can be specified  using any two of the
-three _day_ flags:
-`--day-start`, `--day-end`, `--day-count`.
-The default day _count_ is _14_ (two weeks),
-and the default day _end_ is _today_.
+The time period is measured in days.
+It can be specified using any two of the
+three `day` flags:
+`--day-start`, `--day-end`, and `--day-count`.
+The default day `count` is _14_ (two weeks),
+and the default day `end` is _today_.
 
 ## Installation
 
-Install the [`go`] tool and
-assure that `$(go env GOPATH)/bin` is on your `PATH`.
+Install the [`go`] tool.
 
-Then:
+Assure that your `PATH` includes the value of `$(go env GOPATH)/bin`.
+
+Enter:
 ```
 go install github.com/monopole/snips@latest
 ```

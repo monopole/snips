@@ -82,10 +82,10 @@ const (
 {{else}}
 ### no organizations
 {{end}}
-{{template "` + tmplMdNameLabelledIssueMap + `" (labeledIssueMap "Issues Created" .IssuesCreated)}}
-{{template "` + tmplMdNameLabelledIssueMap + `" (labeledIssueMap "Issues Closed" .IssuesClosed)}}
-{{template "` + tmplMdNameLabelledIssueMap + `" (labeledIssueMap "PRs Reviewed" .PrsReviewed)}}
-{{template "` + tmplMdNameLabelledCommitMap + `" (labeledCommitMap "Commits" .Commits)}}
+{{template "` + tmplMdNameLabelledIssueMap + `" (labeledIssueMap "Issues Created" "foo.com" .IssuesCreated)}}
+{{template "` + tmplMdNameLabelledIssueMap + `" (labeledIssueMap "Issues Closed" "foo.com" .IssuesClosed)}}
+{{template "` + tmplMdNameLabelledIssueMap + `" (labeledIssueMap "PRs Reviewed" "foo.com" .PrsReviewed)}}
+{{template "` + tmplMdNameLabelledCommitMap + `" (labeledCommitMap "Commits" "foo.com" .Commits)}}
 ---
 {{end}}
 `
@@ -125,9 +125,9 @@ func WriteMdCommit(w io.Writer, c *types.MyCommit) error {
 }
 
 func WriteMdLabelledIssueMap(w io.Writer, l string, m map[types.RepoId][]types.MyIssue) error {
-	return makeMdTemplate().ExecuteTemplate(w, tmplMdNameLabelledIssueMap, labeledIssueMap(l, m))
+	return makeMdTemplate().ExecuteTemplate(w, tmplMdNameLabelledIssueMap, labeledIssueMap(l, "d.com", m))
 }
 
 func WriteMdLabelledCommitMap(w io.Writer, l string, m map[types.RepoId][]*types.MyCommit) error {
-	return makeMdTemplate().ExecuteTemplate(w, tmplMdNameLabelledCommitMap, labeledCommitMap(l, m))
+	return makeMdTemplate().ExecuteTemplate(w, tmplMdNameLabelledCommitMap, labeledCommitMap(l, "d.com", m))
 }

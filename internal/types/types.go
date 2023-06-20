@@ -55,7 +55,8 @@ type MyUser struct {
 }
 
 type Report struct {
-	Title string
-	Dr    *DayRange
-	Users []*MyUser
+	Title  string
+	Domain string
+	Dr     *DayRange
+	Users  []*MyUser
 }

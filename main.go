@@ -5,15 +5,15 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
-	"github.com/monopole/snips/internal/query"
-	"github.com/monopole/snips/internal/search"
 	"log"
 	"os"
 
 	"github.com/google/go-github/v52/github"
 	"github.com/monopole/snips/internal/oauth"
 	"github.com/monopole/snips/internal/pgmargs"
+	"github.com/monopole/snips/internal/query"
 	"github.com/monopole/snips/internal/report"
+	"github.com/monopole/snips/internal/search"
 	"github.com/monopole/snips/internal/types"
 	"golang.org/x/oauth2"
 )
@@ -77,14 +77,10 @@ func main() {
 		write = report.WriteMdReport
 	}
 	err = write(os.Stdout, &types.Report{
-		Title: func() string {
-			if args.Title != "" {
-				return args.Title
-			}
-			return "Activity at " + args.GhDomain
-		}(),
-		Dr:    args.DateRange,
-		Users: users,
+		Title:  args.Title,
+		Domain: args.GhDomain,
+		Dr:     args.DateRange,
+		Users:  users,
 	})
 	if err != nil {
 		log.Fatalf("trouble rendering html: %s", err.Error())

@@ -116,7 +116,7 @@ func Test_WriteHtmlCommit(t *testing.T) {
 	}
 }
 
-func Test_WriteHtmlLabelledIssueMap(t *testing.T) {
+func Test_WriteHtmlLabeledIssueMap(t *testing.T) {
 	tests := map[string]struct {
 		l      string
 		m      map[types.RepoId][]types.MyIssue
@@ -132,12 +132,12 @@ func Test_WriteHtmlLabelledIssueMap(t *testing.T) {
 				repoId1: {issue1, issue2},
 				repoId2: {issue1, issue2},
 			},
-			result: `<h3> issues reviewed: </h3>
+			result: `<h3> issues reviewed : </h3>
 <div class="issueMap">
-<h4> bitCoinLosers/jupiterToast </h4>
+<h4> <a href="https:github.com/bitCoinLosers/jupiterToast"> bitCoinLosers/jupiterToast </a>  </h4>
 
 <div class="oneIssue"> <code>2019-Jun-13</code> &nbsp; <a href="https://github.tesla.com/design-technology/3dx/pull/636"> Fry the older bananas </a> </div>
-<div class="oneIssue"> <code>2019-Jun-15</code> &nbsp; <a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2555"> Indemnify the cheese eaters </a> </div><h4> federationOfPlanets/marsToilet </h4>
+<div class="oneIssue"> <code>2019-Jun-15</code> &nbsp; <a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2555"> Indemnify the cheese eaters </a> </div><h4> <a href="https:github.com/federationOfPlanets/marsToilet"> federationOfPlanets/marsToilet </a>  </h4>
 
 <div class="oneIssue"> <code>2019-Jun-13</code> &nbsp; <a href="https://github.tesla.com/design-technology/3dx/pull/636"> Fry the older bananas </a> </div>
 <div class="oneIssue"> <code>2019-Jun-15</code> &nbsp; <a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2555"> Indemnify the cheese eaters </a> </div>
@@ -147,13 +147,13 @@ func Test_WriteHtmlLabelledIssueMap(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			var b bytes.Buffer
-			WriteHtmlLabelledIssueMap(&b, tt.l, tt.m)
+			WriteHtmlLabeledIssueMap(&b, tt.l, tt.m)
 			assert.Equal(t, tt.result, b.String())
 		})
 	}
 }
 
-func Test_WriteHtmlLabelledCommitMap(t *testing.T) {
+func Test_WriteHtmlLabeledCommitMap(t *testing.T) {
 	tests := map[string]struct {
 		l      string
 		m      map[types.RepoId][]*types.MyCommit
@@ -168,9 +168,9 @@ func Test_WriteHtmlLabelledCommitMap(t *testing.T) {
 			m: map[types.RepoId][]*types.MyCommit{
 				repoId1: {&commit1, &commit2},
 			},
-			result: `<h3> commits: </h3>
+			result: `<h3> commits : </h3>
 <div class="issueMap">
-<h4> federationOfPlanets/marsToilet </h4>
+<h4> <a href="https:hoser.com/federationOfPlanets/marsToilet"> federationOfPlanets/marsToilet </a> </h4>
 
 <div class="oneIssue"> <code>2019-Jun-13
 <a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578">fc25519</a> (pull/<a href="https://github.tesla.com/design-technology/3dx/pull/636">600</a>)
@@ -186,7 +186,7 @@ func Test_WriteHtmlLabelledCommitMap(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			var b bytes.Buffer
-			WriteHtmlLabelledCommitMap(&b, tt.l, tt.m)
+			WriteHtmlLabeledCommitMap(&b, tt.l, tt.m)
 			assert.Equal(t, tt.result, b.String())
 		})
 	}

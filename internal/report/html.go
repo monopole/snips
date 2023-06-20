@@ -41,24 +41,56 @@ func makeFuncMap() map[string]interface{} {
 			}
 			return c
 		},
-		"bigEnuf": func(s int) bool {
+		"bigEnough": func(s int) bool {
 			return s > 5
+		},
+		"domainAndUser": func(d string, u *types.MyUser) interface{} {
+			return &struct {
+				D string
+				U *types.MyUser
+			}{D: d, U: u}
+		},
+		"domainAndIssueMap": func(d string, m map[types.RepoId][]types.MyIssue) interface{} {
+			return &struct {
+				D string
+				M map[types.RepoId][]types.MyIssue
+			}{D: d, M: m}
+		},
+		"domainAndCommitMap": func(d string, m map[types.RepoId][]*types.MyCommit) interface{} {
+			return &struct {
+				D string
+				M map[types.RepoId][]*types.MyCommit
+			}{D: d, M: m}
+		},
+		"domainAndRepo": func(d string, rid types.RepoId) interface{} {
+			return &struct {
+				D   string
+				Rid types.RepoId
+			}{D: d, Rid: rid}
+		},
+		"domainAndOrgs": func(d string, o []types.MyOrg) interface{} {
+			return &struct {
+				D    string
+				Orgs []types.MyOrg
+			}{D: d, Orgs: o}
 		},
 	}
 }
 
-func labeledCommitMap(l string, m map[types.RepoId][]*types.MyCommit) interface{} {
+func labeledCommitMap(l string, d string, m map[types.RepoId][]*types.MyCommit) interface{} {
 	return &struct {
 		Label string
+		D     string
 		M     map[types.RepoId][]*types.MyCommit
-	}{Label: l, M: m}
+	}{Label: l, D: d, M: m}
 }
 
-func labeledIssueMap(l string, m map[types.RepoId][]types.MyIssue) interface{} {
+func labeledIssueMap(l string, d string, m map[types.RepoId][]types.MyIssue) interface{} {
 	return &struct {
 		Label string
+		D     string
 		M     map[types.RepoId][]types.MyIssue
-	}{Label: l, M: m}
+	}{Label: l, D: d, M: m}
 }
 
 const (
@@ -83,10 +115,16 @@ const (
 </style>
 `
 
+	tmplHtmlNameRepoLink = "tmplHtmlRepoLink"
+	tmplHtmlBodyRepoLink = `
+{{define "` + tmplHtmlNameRepoLink + `" -}}
+<a href="https:{{.D}}/{{.Rid}}"> {{.Rid}} </a>
+{{- end}}
+`
 	tmplHtmlNameCount = "tmplHtmlNameCount"
 	tmplHtmlBodyCount = `
 {{define "` + tmplHtmlNameCount + `" -}}
-{{if bigEnuf .}} <span class="count"> ({{.}}) </span> {{end -}}
+{{if bigEnough .}} <span class="count"> ({{.}}) </span> {{end -}}
 {{- end}}
 `
 
@@ -110,8 +148,8 @@ const (
 	tmplHtmlBodyRepoToIssueMap = `
 {{define "` + tmplHtmlNameRepoToIssueMap + `" -}}
 <div class="issueMap">
-{{range $repo, $list := . -}}
-<h4> {{$repo}} {{template "` + tmplHtmlNameCount + `" len $list}}</h4>
+{{range $repo, $list := .M -}}
+<h4> {{template "` + tmplHtmlNameRepoLink + `" domainAndRepo $.D $repo}}  {{template "` + tmplHtmlNameCount + `" len $list}}</h4>
 {{range $i, $issue := $list }}
 <div class="oneIssue"> {{template "` + tmplHtmlNameIssue + `" $issue}} </div>
 {{- end}}
@@ -123,8 +161,8 @@ const (
 	tmplHtmlBodyRepoToCommitMap = `
 {{define "` + tmplHtmlNameRepoToCommitMap + `" -}}
 <div class="issueMap">
-{{range $repo, $list := . -}}
-<h4> {{$repo}} {{template "` + tmplHtmlNameCount + `" len $list}}</h4>
+{{range $repo, $list := .M -}}
+<h4> {{template "` + tmplHtmlNameRepoLink + `" domainAndRepo $.D $repo}} {{template "` + tmplHtmlNameCount + `" len $list}}</h4>
 {{range $i, $issue := $list }}
 <div class="oneIssue"> {{template "` + tmplHtmlNameCommit + `" $issue}} </div>
 {{- end}}
@@ -133,23 +171,23 @@ const (
 {{- end}}
 `
 
-	tmplHtmlNameLabelledIssueMap = "tmplHtmlNameLabelledIssueMap"
-	tmplHtmlBodyLabelledIssueMap = `
-{{define "` + tmplHtmlNameLabelledIssueMap + `" -}}
+	tmplHtmlNameLabeledIssueMap = "tmplHtmlNameLabeledIssueMap"
+	tmplHtmlBodyLabeledIssueMap = `
+{{define "` + tmplHtmlNameLabeledIssueMap + `" -}}
 {{if .M -}}
 <h3> {{.Label}} {{template "` + tmplHtmlNameCount + `" (mapTotalIssues .M)}}: </h3>
-{{template "` + tmplHtmlNameRepoToIssueMap + `" .M}}
+{{template "` + tmplHtmlNameRepoToIssueMap + `" (domainAndIssueMap .D .M)}}
 {{- else -}}
 <h3> No {{.Label}} </h3>
 {{- end}}
 {{- end}}
 `
-	tmplHtmlNameLabelledCommitMap = "tmplHtmlNameLabelledCommitMap"
-	tmplHtmlBodyLabelledCommitMap = `
-{{define "` + tmplHtmlNameLabelledCommitMap + `" -}}
+	tmplHtmlNameLabeledCommitMap = "tmplHtmlNameLabeledCommitMap"
+	tmplHtmlBodyLabeledCommitMap = `
+{{define "` + tmplHtmlNameLabeledCommitMap + `" -}}
 {{if .M -}}
 <h3> {{.Label}} {{template "` + tmplHtmlNameCount + `" (mapTotalCommits .M)}}: </h3>
-{{template "` + tmplHtmlNameRepoToCommitMap + `" .M}}
+{{template "` + tmplHtmlNameRepoToCommitMap + `" (domainAndCommitMap .D .M)}}
 {{- else -}}
 <h3> No {{.Label}} </h3>
 {{- end}}
@@ -160,7 +198,9 @@ const (
 {{define "` + tmplHtmlNameOrganizations + `" -}}
 <h3> Organizations </h3>
 <ul>
-{{range . -}} <li>{{if .Name}}{{.Name}} &nbsp; {{end}} {{.Login}}</li>
+{{range .Orgs }}<li>
+<a href="https://{{$.D}}/{{.Login}}"> {{if .Name}}{{.Name}} &nbsp; {{end}} {{.Login}} </a>
+</li>
 {{end}}
 </ul>
 {{- end}}
@@ -168,17 +208,17 @@ const (
 	tmplHtmlNameUser = "tmplHtmlNameUser"
 	tmplHtmlBodyUser = `
 {{define "` + tmplHtmlNameUser + `" -}}
-<h2> {{.Name}} (<em>{{if .Email}}{{.Email}}{{else}}{{.Login}}{{end}}</em>)</h2>
+<h2> {{.U.Name}} (<em>{{if .U.Email}}{{.U.Email}}{{else}}{{.U.Login}}{{end}}</em>)</h2>
 <div class="userData">
-{{if .Orgs}}
-  {{template "` + tmplHtmlNameOrganizations + `" .Orgs}}
+{{if .U.Orgs}}
+  {{template "` + tmplHtmlNameOrganizations + `" domainAndOrgs .D .U.Orgs}}
 {{else}}
   <h3> no organizations </h3>
 {{end}}
-{{template "` + tmplHtmlNameLabelledIssueMap + `" (labeledIssueMap "Issues Created" .IssuesCreated)}}
-{{template "` + tmplHtmlNameLabelledIssueMap + `" (labeledIssueMap "Issues Closed" .IssuesClosed)}}
-{{template "` + tmplHtmlNameLabelledIssueMap + `" (labeledIssueMap "PRs Reviewed" .PrsReviewed)}}
-{{template "` + tmplHtmlNameLabelledCommitMap + `" (labeledCommitMap "Commits" .Commits)}}
+{{template "` + tmplHtmlNameLabeledIssueMap + `" (labeledIssueMap "Issues Created" .D .U.IssuesCreated)}}
+{{template "` + tmplHtmlNameLabeledIssueMap + `" (labeledIssueMap "Issues Closed" .D .U.IssuesClosed)}}
+{{template "` + tmplHtmlNameLabeledIssueMap + `" (labeledIssueMap "PRs Reviewed" .D .U.PrsReviewed)}}
+{{template "` + tmplHtmlNameLabeledCommitMap + `" (labeledCommitMap "Commits" .D .U.Commits)}}
 </div>
 <hr>
 {{end}}
@@ -190,14 +230,14 @@ const (
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>{{.Title}}</title>` +
+    <title>{{if .Title}}{{.Title}}{{else}}Activity at {{.Domain}}{{end}}</title>` +
 		cssStyle + `
   </head>
   <body>
     <h1>{{.Title}}</h1>
     <p><em> {{ prettyDateRange .Dr }} </em></p>
     {{range .Users -}}
-      <div>{{ template "` + tmplHtmlNameUser + `" . -}}</div>
+      <div>{{ template "` + tmplHtmlNameUser + `" (domainAndUser $.Domain .) -}}</div>
     {{- else -}}
       <p><strong> no users </strong></p>
     {{- end}}
@@ -210,9 +250,10 @@ const (
 func makeHtmlTemplate() *template.Template {
 	return template.Must(
 		template.New("main").Funcs(makeFuncMap()).Parse(
-			tmplHtmlBodyCount + tmplHtmlBodyIssue + tmplHtmlBodyCommit + tmplHtmlBodyOrganizations +
+			tmplHtmlBodyRepoLink + tmplHtmlBodyCount +
+				tmplHtmlBodyIssue + tmplHtmlBodyCommit + tmplHtmlBodyOrganizations +
 				tmplHtmlBodyRepoToIssueMap + tmplHtmlBodyRepoToCommitMap +
-				tmplHtmlBodyLabelledIssueMap + tmplHtmlBodyLabelledCommitMap +
+				tmplHtmlBodyLabeledIssueMap + tmplHtmlBodyLabeledCommitMap +
 				tmplHtmlBodyUser + tmplHtmlBodySnipsMain))
 }
 
@@ -228,10 +269,10 @@ func WriteHtmlCommit(w io.Writer, c *types.MyCommit) error {
 	return makeHtmlTemplate().ExecuteTemplate(w, tmplHtmlNameCommit, c)
 }
 
-func WriteHtmlLabelledIssueMap(w io.Writer, l string, m map[types.RepoId][]types.MyIssue) error {
-	return makeHtmlTemplate().ExecuteTemplate(w, tmplHtmlNameLabelledIssueMap, labeledIssueMap(l, m))
+func WriteHtmlLabeledIssueMap(w io.Writer, l string, m map[types.RepoId][]types.MyIssue) error {
+	return makeHtmlTemplate().ExecuteTemplate(w, tmplHtmlNameLabeledIssueMap, labeledIssueMap(l, "github.com", m))
 }
 
-func WriteHtmlLabelledCommitMap(w io.Writer, l string, m map[types.RepoId][]*types.MyCommit) error {
-	return makeHtmlTemplate().ExecuteTemplate(w, tmplHtmlNameLabelledCommitMap, labeledCommitMap(l, m))
+func WriteHtmlLabeledCommitMap(w io.Writer, l string, m map[types.RepoId][]*types.MyCommit) error {
+	return makeHtmlTemplate().ExecuteTemplate(w, tmplHtmlNameLabeledCommitMap, labeledCommitMap(l, "hoser.com", m))
 }
