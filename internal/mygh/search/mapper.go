@@ -1,4 +1,4 @@
-package query
+package search
 
 import (
 	"fmt"
@@ -27,8 +27,8 @@ func yankRepoId(raw HasUrl) (types.RepoId, error) {
 		Org:  path[1],
 		Repo: path[2],
 	}, nil
-
 }
+
 func makeMapOfRepoToIssueList(issues []*github.Issue) (map[types.RepoId][]types.MyIssue, error) {
 	rawMap := make(map[types.RepoId][]*github.Issue)
 	seen := make(map[int64]*github.Issue)

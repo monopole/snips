@@ -153,10 +153,10 @@ func Test_WriteMdReport(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			var b bytes.Buffer
 			assert.NoError(t, WriteMdReport(&b, &types.Report{
-				Title:  "hello I am the report title",
-				Domain: "github.com",
-				Dr:     dr,
-				Users:  []*types.MyUser{&tt.dude},
+				Title:    "hello I am the report title",
+				GhDomain: "github.com",
+				Dr:       dr,
+				Users:    []*types.MyUser{&tt.dude},
 			}))
 			//fmt.Println("+++++++++++++++++++++++++++++++++++++++++++++++++")
 			//fmt.Println(b.String())

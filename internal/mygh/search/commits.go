@@ -1,23 +1,20 @@
-package query
+package search
 
 import (
 	"log"
 	"time"
 
 	"github.com/google/go-github/v52/github"
-	"github.com/monopole/snips/internal/search"
 	"github.com/monopole/snips/internal/types"
 )
 
-const prLookupWait = 1 * time.Second
-
-func (w *Worker) findCommits(myUser *types.MyUser) (map[types.RepoId][]*types.MyCommit, error) {
+func (se *Engine) findCommits(myUser *types.MyUser) (map[types.RepoId][]*types.MyCommit, error) {
 	var lst1, lst2 []*types.MyCommit
 	var err error
-	if lst1, err = w.findPrsThenFindCommits(myUser); err != nil {
+	if lst1, err = se.findPrsThenFindCommits(myUser); err != nil {
 		return nil, err
 	}
-	if lst2, err = w.findAllCommits(myUser); err != nil {
+	if lst2, err = se.findAllCommits(myUser); err != nil {
 		return nil, err
 	}
 	result := make(map[types.RepoId][]*types.MyCommit)
@@ -31,14 +28,16 @@ func (w *Worker) findCommits(myUser *types.MyUser) (map[types.RepoId][]*types.My
 	return result, nil
 }
 
-func (w *Worker) findPrsThenFindCommits(myUser *types.MyUser) (commits []*types.MyCommit, err error) {
+const prLookupWait = 1 * time.Second
+
+func (se *Engine) findPrsThenFindCommits(myUser *types.MyUser) (commits []*types.MyCommit, err error) {
 	var lst []*github.Issue
-	lst, err = w.Se.SearchIssues("merged", "author:%s", myUser.Login)
+	lst, err = se.searchIssues("merged", "author:%s", myUser.Login)
 	if err != nil {
 		return
 	}
 	var prsMerged map[types.RepoId][]types.MyIssue
-	if prsMerged, err = makeMapOfRepoToIssueList(filterIssues(lst, keepOnlyPrs)); err != nil {
+	if prsMerged, err = makeMapOfRepoToIssueList(keepOnlyPrs.from(lst)); err != nil {
 		return
 	}
 
@@ -46,7 +45,7 @@ func (w *Worker) findPrsThenFindCommits(myUser *types.MyUser) (commits []*types.
 		for i := range prList {
 			var commitsForPr []*types.MyCommit
 			time.Sleep(prLookupWait)
-			commitsForPr, err = w.getCommitsForPr(repo, &prList[i])
+			commitsForPr, err = se.getCommitsForPr(repo, &prList[i])
 			if err == nil {
 				commits = append(commits, commitsForPr...)
 			} else {
@@ -60,15 +59,15 @@ func (w *Worker) findPrsThenFindCommits(myUser *types.MyUser) (commits []*types.
 
 // getCommitsForPr finds commits by first finding a PR.
 // https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#list-commits-on-a-pull-request
-func (w *Worker) getCommitsForPr(repo types.RepoId, prIssue *types.MyIssue) (result []*types.MyCommit, err error) {
+func (se *Engine) getCommitsForPr(repo types.RepoId, prIssue *types.MyIssue) (result []*types.MyCommit, err error) {
 	var (
 		resp         *github.Response
 		commits, lst []*github.RepositoryCommit
 	)
-	opts := search.MakeListOptions()
+	opts := makeListOptions()
 	for {
-		lst, resp, err = w.GhClient.PullRequests.ListCommits(
-			w.Ctx, prIssue.RepoId.Org, prIssue.RepoId.Repo, prIssue.Number, &opts)
+		lst, resp, err = se.client.PullRequests.ListCommits(
+			se.ctx, prIssue.RepoId.Org, prIssue.RepoId.Repo, prIssue.Number, &opts)
 		if err != nil {
 			return nil, err
 		}
@@ -95,16 +94,16 @@ func (w *Worker) getCommitsForPr(repo types.RepoId, prIssue *types.MyIssue) (res
 
 // findAllCommits finds all commits, including those not associated with a PR.
 // Deliberately excludes merge commits, as they are usually made by GH to merge a PR that wasn't recently rebased.
-func (w *Worker) findAllCommits(myUser *types.MyUser) (result []*types.MyCommit, err error) {
+func (se *Engine) findAllCommits(myUser *types.MyUser) (result []*types.MyCommit, err error) {
 	var lst []*github.CommitResult
-	lst, err = w.Se.SearchCommits("author-date", "merge:false author:%s", myUser.Login)
+	lst, err = se.searchCommits("author-date", "merge:false author:%s", myUser.Login)
 	if err != nil {
 		return nil, err
 	}
 	if lookAtCommitterField := false; lookAtCommitterField {
 		// Usually the author is the committer, so don't bother?
 		var lst2 []*github.CommitResult
-		lst2, err = w.Se.SearchCommits("committer-date", "merge:false committer:%s", myUser.Login)
+		lst2, err = se.searchCommits("committer-date", "merge:false committer:%s", myUser.Login)
 		if err != nil {
 			return nil, err
 		}

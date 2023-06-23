@@ -5,14 +5,6 @@
 [pandoc]: https://pandoc.org/
 [`go`]: https://go.dev
 
-
-<!--
- TODO
-
- * Add jira access via https://github.com/ctreminiom/go-atlassian
--->
-
-
 # snips
 
 Reports GitHub activity about specific users over a common period of days.

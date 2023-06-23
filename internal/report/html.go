@@ -20,7 +20,7 @@ func makeFuncMap() map[string]interface{} {
 			return s[0:7]
 		},
 		"snipDate": func(t time.Time) string {
-			return t.Format(types.DayFormat2)
+			return t.Format(types.DayFormatHuman)
 		},
 		"prettyDateRange": func(dr *types.DayRange) string {
 			return dr.PrettyRange()
@@ -230,14 +230,14 @@ const (
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>{{if .Title}}{{.Title}}{{else}}Activity at {{.Domain}}{{end}}</title>` +
+    <title>{{if .Title}}{{.Title}}{{else}}Activity at {{.GhDomain}}{{end}}</title>` +
 		cssStyle + `
   </head>
   <body>
     <h1>{{.Title}}</h1>
     <p><em> {{ prettyDateRange .Dr }} </em></p>
     {{range .Users -}}
-      <div>{{ template "` + tmplHtmlNameUser + `" (domainAndUser $.Domain .) -}}</div>
+      <div>{{ template "` + tmplHtmlNameUser + `" (domainAndUser $.GhDomain .) -}}</div>
     {{- else -}}
       <p><strong> no users </strong></p>
     {{- end}}

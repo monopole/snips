@@ -2,29 +2,23 @@ package oauth
 
 import (
 	"bytes"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"os"
-	"strings"
 	"time"
+
+	"github.com/monopole/snips/internal/myhttp"
 )
 
 const (
-	scopes                    = "repo read:org user"
-	headerAccept              = "Accept"
-	headerContentType         = "Content-Type"
-	contentTypeFormURLEncoded = "application/x-www-form-urlencoded"
-	contentTypeJson           = "application/json"
-	scheme                    = "https://"
-	defaultWaitingInterval    = 8 * time.Second
-	maxAttempts               = 10
-	WarningPrefix             = " ***** "
+	scopes = "repo read:org user"
+
+	defaultWaitingInterval = 8 * time.Second
+	maxAttempts            = 10
+	WarningPrefix          = " ***** "
 )
 
 type Params struct {
@@ -33,9 +27,9 @@ type Params struct {
 	// ClientId for this program as registered at that domain.
 	// We don't appear to need a client secret for RO access.
 	ClientId string
-	// CaPath is the local file path to a certificate to validate the oauth server identity.
-	CaPath string
-	// Verbose is true if you want more print statements.
+	// HttpCl is used to communicate with the GhDomain.
+	HttpCl *http.Client
+	// Verbose being true yields more print statements.
 	Verbose bool
 }
 
@@ -50,11 +44,7 @@ type devCodeData struct {
 // GetAccessToken implements the instructions at
 // https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow
 func GetAccessToken(params *Params) (accessCode string, err error) {
-	cl, err := makeHttpClient(params.CaPath)
-	if err != nil {
-		return
-	}
-	loc, err := url.Parse(scheme + params.GhDomain + "/login/device/code")
+	loc, err := url.Parse(myhttp.Scheme + params.GhDomain + "/login/device/code")
 	if err != nil {
 		return
 	}
@@ -65,7 +55,7 @@ func GetAccessToken(params *Params) (accessCode string, err error) {
 	if params.Verbose {
 		fmt.Printf("posting to %s\n", loc.String())
 	}
-	r, err := sendPost(cl, loc, postData, params.Verbose)
+	r, err := sendPost(params.HttpCl, loc, postData, params.Verbose)
 	if err != nil {
 		return
 	}
@@ -81,7 +71,7 @@ func GetAccessToken(params *Params) (accessCode string, err error) {
 	}
 	waitingInterval := computeWaitingInterval(codes.MinIntervalSeconds)
 	warnUser(waitingInterval, &codes)
-	return pollForTheUsersApproval(cl, params, waitingInterval, codes.DeviceCode)
+	return pollForTheUsersApproval(params.HttpCl, params, waitingInterval, codes.DeviceCode)
 }
 
 func warnUser(waitingInterval time.Duration, codes *devCodeData) {
@@ -101,7 +91,7 @@ func computeWaitingInterval(minIntervalSeconds int) time.Duration {
 func pollForTheUsersApproval(
 	cl *http.Client, params *Params,
 	pollInterval time.Duration, devCode string) (accessCode string, err error) {
-	loc, err := url.Parse(scheme + params.GhDomain + "/login/oauth/access_token")
+	loc, err := url.Parse(myhttp.Scheme + params.GhDomain + "/login/oauth/access_token")
 	if err != nil {
 		return
 	}
@@ -156,98 +146,18 @@ func sendPost(cl *http.Client, loc *url.URL, postData url.Values, debug bool) (a
 	if err != nil {
 		return
 	}
-	req.Header.Set(headerAccept, contentTypeJson)
-	req.Header.Set(headerContentType, contentTypeFormURLEncoded)
+	req.Header.Set(myhttp.HeaderAccept, myhttp.ContentTypeJson)
+	req.Header.Set(myhttp.HeaderContentType, myhttp.ContentTypeFormURLEncoded)
 	resp, err = cl.Do(req)
 	if err != nil {
 		return
 	}
 	if debug {
-		printResponse(resp)
+		myhttp.PrintResponse(resp, myhttp.PrArgs{Headers: true})
 	}
 	if resp.StatusCode != http.StatusOK {
 		err = fmt.Errorf("status code %d", resp.StatusCode)
 		return
 	}
 	return resp.Body, nil
-}
-
-// makeHttpClient returns client ready to make HTTP requests.
-// It's primed with certs loaded from the given caPath.
-// If no caPath provided, TLS will be unauthenticated.
-// The certs are used to establish that the servers are who they say they are.
-func makeHttpClient(caPath string) (*http.Client, error) {
-	pool, err := loadCertPoolFromFile(caPath)
-	if err != nil {
-		return nil, err
-	}
-	jar, err := cookiejar.New(nil /* no options */)
-	if err != nil {
-		return nil, err
-	}
-	return &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: makeTlsConfig(pool),
-		},
-		// Don't automatically follow redirects; we want to see what DS is doing.
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-		Jar: jar,
-	}, nil
-}
-
-// loadCertPoolFromFile returns a pool containing the certs read from the given file.
-func loadCertPoolFromFile(path string) (*x509.CertPool, error) {
-	if path == "" {
-		return nil, nil
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("unable to load certs from %q; %w", path, err)
-	}
-	pool := x509.NewCertPool()
-	pool.AppendCertsFromPEM(data)
-	return pool, nil
-}
-
-// makeTlsConfig returns a TLS config that uses a cert pool if provided, falling
-// back to no cert check if no cert pool provided.
-func makeTlsConfig(pool *x509.CertPool) *tls.Config {
-	if pool == nil {
-		return &tls.Config{
-			InsecureSkipVerify: true,
-		}
-	}
-	return &tls.Config{
-		RootCAs: pool,
-	}
-}
-
-// printHeaders prints response headers.
-func printHeaders(r *http.Response) {
-	for k, v := range r.Header {
-		fmt.Printf("%50s : %s\n", k, v)
-	}
-}
-
-// printResponse prints a response.
-func printResponse(r *http.Response) error {
-	fmt.Printf("==== %d ==================\n", r.StatusCode)
-	if showHeaders := true; showHeaders {
-		printHeaders(r)
-	}
-	if readBody := false; readBody {
-		// Doing this makes the body unavailable elsewhere.
-		defer r.Body.Close()
-		b, err := io.ReadAll(r.Body)
-		if err != nil {
-			return err
-		}
-		if body := strings.TrimSpace(string(b)); body != "" {
-			fmt.Println(body)
-		}
-	}
-	fmt.Printf("============================\n\n")
-	return nil
 }
