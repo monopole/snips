@@ -15,7 +15,7 @@ func Test_WriteMdIssue(t *testing.T) {
 	}{
 		"t1": {
 			issue:  issue1,
-			result: "`2019-Jun-13` [Fry the older bananas](https://github.tesla.com/design-technology/3dx/pull/636)",
+			result: "`2019-Jun-13` [Fry the older bananas](https://github.acmecorp.com/design-technology/3dx/pull/636)",
 		},
 	}
 	for name, tt := range tests {
@@ -34,7 +34,7 @@ func Test_WriteMdCommit(t *testing.T) {
 	}{
 		"t1": {
 			commit: commit1,
-			result: "`2019-Jun-13` [`fc25519`](https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578) (pull/[600](https://github.tesla.com/design-technology/3dx/pull/636)) Fry the older bananas",
+			result: "`2019-Jun-13` [`fc25519`](https://github.acmecorp.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578) (pull/[600](https://github.acmecorp.com/design-technology/3dx/pull/636)) Fry the older bananas",
 		},
 	}
 	for name, tt := range tests {
@@ -49,7 +49,7 @@ func Test_WriteMdCommit(t *testing.T) {
 func Test_WriteMdLabelledIssueMap(t *testing.T) {
 	tests := map[string]struct {
 		l      string
-		m      map[types.RepoId][]types.MyIssue
+		iSet   *types.IssueSet
 		result string
 	}{
 		"t1": {
@@ -58,28 +58,31 @@ func Test_WriteMdLabelledIssueMap(t *testing.T) {
 		},
 		"t2": {
 			l: "issues reviewed",
-			m: map[types.RepoId][]types.MyIssue{
-				repoId1: {issue1, issue2},
-				repoId2: {issue1, issue2},
+			iSet: &types.IssueSet{
+				Domain: "",
+				Groups: map[types.RepoId][]types.MyIssue{
+					repoId1: {issue1, issue2},
+					repoId2: {issue1, issue2},
+				},
 			},
 			result: `### issues reviewed:
 
 #### bitCoinLosers/jupiterToast
 
-  - ` + "`2019-Jun-13`" + ` [Fry the older bananas](https://github.tesla.com/design-technology/3dx/pull/636)
-  - ` + "`2019-Jun-15`" + ` [Indemnify the cheese eaters](https://github.tesla.com/design-technology/argocd-manifests/pull/2555)
+  - ` + "`2019-Jun-13`" + ` [Fry the older bananas](https://github.acmecorp.com/design-technology/3dx/pull/636)
+  - ` + "`2019-Jun-15`" + ` [Indemnify the cheese eaters](https://github.acmecorp.com/design-technology/argocd-manifests/pull/2555)
 
 #### federationOfPlanets/marsToilet
 
-  - ` + "`2019-Jun-13`" + ` [Fry the older bananas](https://github.tesla.com/design-technology/3dx/pull/636)
-  - ` + "`2019-Jun-15`" + ` [Indemnify the cheese eaters](https://github.tesla.com/design-technology/argocd-manifests/pull/2555)
+  - ` + "`2019-Jun-13`" + ` [Fry the older bananas](https://github.acmecorp.com/design-technology/3dx/pull/636)
+  - ` + "`2019-Jun-15`" + ` [Indemnify the cheese eaters](https://github.acmecorp.com/design-technology/argocd-manifests/pull/2555)
 `,
 		},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			var b bytes.Buffer
-			WriteMdLabelledIssueMap(&b, tt.l, tt.m)
+			WriteMdLabelledIssueSet(&b, tt.l, tt.iSet)
 			assert.Equal(t, tt.result, b.String())
 		})
 	}
@@ -104,8 +107,8 @@ func Test_WriteMdLabelledCommitMap(t *testing.T) {
 
 #### federationOfPlanets/marsToilet
 
-` + " - `2019-Jun-13` [`fc25519`]" + `(https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578) (pull/[600](https://github.tesla.com/design-technology/3dx/pull/636)) Fry the older bananas
-` + " - `2019-Jun-13` [`bbd9f61`]" + `(https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/bbd9f61f0c1bb26e58641f15da872afce9f6c1ec) Fry the older bananas
+` + " - `2019-Jun-13` [`fc25519`]" + `(https://github.acmecorp.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578) (pull/[600](https://github.acmecorp.com/design-technology/3dx/pull/636)) Fry the older bananas
+` + " - `2019-Jun-13` [`bbd9f61`]" + `(https://github.acmecorp.com/design-technology/argocd-manifests/pull/2663/commits/bbd9f61f0c1bb26e58641f15da872afce9f6c1ec) Fry the older bananas
 `,
 		},
 	}
@@ -128,11 +131,14 @@ func Test_WriteMdReport(t *testing.T) {
 				Name:    "Bobby Bobface",
 				Company: "TESLA",
 				Login:   "bobby",
-				Email:   "bob@tesla.com",
-				Orgs:    []types.MyOrg{org1, org2},
-				IssuesCreated: map[types.RepoId][]types.MyIssue{
-					repoId1: {issue1, issue2},
-					repoId2: {issue1, issue2},
+				Email:   "bob@acmecorp.com",
+				GhOrgs:  []types.MyGhOrg{org1, org2},
+				IssuesCreated: &types.IssueSet{
+					Domain: "hoserface",
+					Groups: map[types.RepoId][]types.MyIssue{
+						repoId1: {issue1, issue2},
+						repoId2: {issue1, issue2},
+					},
 				},
 				IssuesClosed:    nil,
 				IssuesCommented: nil,
@@ -153,10 +159,10 @@ func Test_WriteMdReport(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			var b bytes.Buffer
 			assert.NoError(t, WriteMdReport(&b, &types.Report{
-				Title:  "hello I am the report title",
-				Domain: "github.com",
-				Dr:     dr,
-				Users:  []*types.MyUser{&tt.dude},
+				Title:    "hello I am the report title",
+				DomainGh: "github.com",
+				Dr:       dr,
+				Users:    []*types.MyUser{&tt.dude},
 			}))
 			//fmt.Println("+++++++++++++++++++++++++++++++++++++++++++++++++")
 			//fmt.Println(b.String())

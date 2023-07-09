@@ -20,10 +20,10 @@ const (
 {{- if .Pr}} (pull/[{{.Pr.Number}}]({{.Pr.HtmlUrl}})){{end}} {{.MessageFirstLine}}
 {{- end}}
 `
-	tmplMdNameRepoToIssueMap = "tmplMdNameRepoToIssueMap"
-	tmplMdBodyRepoToIssueMap = `
-{{define "` + tmplMdNameRepoToIssueMap + `" -}}
-{{range $repo, $list := . }}
+	tmplMdNameRepoToIssueSet = "tmplMdNameRepoToIssueSet"
+	tmplMdBodyRepoToIssueSet = `
+{{define "` + tmplMdNameRepoToIssueSet + `" -}}
+{{range $repo, $list := .Groups }}
 #### {{$repo}}
 {{range $i, $issue := $list }}
   - {{template "` + tmplMdNameIssue + `" $issue}}
@@ -43,12 +43,12 @@ const (
 {{- end}}
 `
 
-	tmplMdNameLabelledIssueMap = "tmplMdNameLabelledIssueMap"
-	tmplMdBodyLabelledIssueMap = `
-{{define "` + tmplMdNameLabelledIssueMap + `" -}}
-{{if .M -}}
+	tmplMdNameLabelledIssueSet = "tmplMdNameLabelledIssueSet"
+	tmplMdBodyLabelledIssueSet = `
+{{define "` + tmplMdNameLabelledIssueSet + `" -}}
+{{if .ISet -}}
 ### {{.Label}}:
-{{template "` + tmplMdNameRepoToIssueMap + `" .M}}
+{{template "` + tmplMdNameRepoToIssueSet + `" .ISet}}
 {{- else -}}
 ### No {{.Label}}
 {{- end}}
@@ -77,14 +77,14 @@ const (
 	tmplMdBodyUser = `
 {{define "` + tmplMdNameUser + `"}}
 ## {{.Name}} (_{{if .Email}}{{.Email}}{{else}}{{.Login}}{{end}}_)
-{{if .Orgs}}
-{{template "` + tmplMdNameOrganizations + `" .Orgs}}
+{{if .GhOrgs}}
+{{template "` + tmplMdNameOrganizations + `" .GhOrgs}}
 {{else}}
 ### no organizations
 {{end}}
-{{template "` + tmplMdNameLabelledIssueMap + `" (labeledIssueMap "Issues Created" "foo.com" .IssuesCreated)}}
-{{template "` + tmplMdNameLabelledIssueMap + `" (labeledIssueMap "Issues Closed" "foo.com" .IssuesClosed)}}
-{{template "` + tmplMdNameLabelledIssueMap + `" (labeledIssueMap "PRs Reviewed" "foo.com" .PrsReviewed)}}
+{{template "` + tmplMdNameLabelledIssueSet + `" (labeledIssueSet "Issues Created" .IssuesCreated)}}
+{{template "` + tmplMdNameLabelledIssueSet + `" (labeledIssueSet "Issues Closed" .IssuesClosed)}}
+{{template "` + tmplMdNameLabelledIssueSet + `" (labeledIssueSet "PRs Reviewed" .PrsReviewed)}}
 {{template "` + tmplMdNameLabelledCommitMap + `" (labeledCommitMap "Commits" "foo.com" .Commits)}}
 ---
 {{end}}
@@ -107,8 +107,8 @@ func makeMdTemplate() *template.Template {
 	return template.Must(
 		template.New("main").Funcs(makeFuncMap()).Parse(
 			tmplMdBodyIssue + tmplMdBodyCommit + tmplMdBodyOrganizations +
-				tmplMdBodyRepoToIssueMap + tmplMdBodyRepoToCommitMap +
-				tmplMdBodyLabelledIssueMap + tmplMdBodyLabelledCommitMap +
+				tmplMdBodyRepoToIssueSet + tmplMdBodyRepoToCommitMap +
+				tmplMdBodyLabelledIssueSet + tmplMdBodyLabelledCommitMap +
 				tmplMdBodyUser + tmplMdBodySnipsMain))
 }
 
@@ -124,8 +124,8 @@ func WriteMdCommit(w io.Writer, c *types.MyCommit) error {
 	return makeMdTemplate().ExecuteTemplate(w, tmplMdNameCommit, c)
 }
 
-func WriteMdLabelledIssueMap(w io.Writer, l string, m map[types.RepoId][]types.MyIssue) error {
-	return makeMdTemplate().ExecuteTemplate(w, tmplMdNameLabelledIssueMap, labeledIssueMap(l, "d.com", m))
+func WriteMdLabelledIssueSet(w io.Writer, l string, is *types.IssueSet) error {
+	return makeMdTemplate().ExecuteTemplate(w, tmplMdNameLabelledIssueSet, labeledIssueSet(l, is))
 }
 
 func WriteMdLabelledCommitMap(w io.Writer, l string, m map[types.RepoId][]*types.MyCommit) error {

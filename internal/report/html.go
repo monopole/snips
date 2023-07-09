@@ -12,6 +12,20 @@ import (
 // mqlTimeFormat is the format used by mql's businessobject print and query commands.
 const mqlTimeFormat = "1/2/2006 3:04:05 PM"
 
+type DomainAndRepo struct {
+	Dgh string
+	Rid types.RepoId
+}
+
+func (dr DomainAndRepo) HRef() string {
+	if strings.Contains(dr.Dgh, "github") {
+		// Try to make a GitHub link.
+		return dr.Dgh + "/" + dr.Rid.String()
+	}
+	// Try to make a Jira link.
+	return dr.Dgh + "/projects/" + dr.Rid.Name + "/issues"
+}
+
 // makeFuncMap makes a string to function map for use in Go template rendering.
 func makeFuncMap() map[string]interface{} {
 	return map[string]interface{}{
@@ -20,21 +34,14 @@ func makeFuncMap() map[string]interface{} {
 			return s[0:7]
 		},
 		"snipDate": func(t time.Time) string {
-			return t.Format(types.DayFormat2)
+			return t.Format(types.DayFormatHuman)
 		},
 		"prettyDateRange": func(dr *types.DayRange) string {
 			return dr.PrettyRange()
 		},
-		"labeledIssueMap":  labeledIssueMap,
+		"labeledIssueSet":  labeledIssueSet,
 		"labeledCommitMap": labeledCommitMap,
 		"mapTotalCommits": func(m map[types.RepoId][]*types.MyCommit) int {
-			c := 0
-			for _, v := range m {
-				c += len(v)
-			}
-			return c
-		},
-		"mapTotalIssues": func(m map[types.RepoId][]types.MyIssue) int {
 			c := 0
 			for _, v := range m {
 				c += len(v)
@@ -44,53 +51,47 @@ func makeFuncMap() map[string]interface{} {
 		"bigEnough": func(s int) bool {
 			return s > 5
 		},
-		"domainAndUser": func(d string, u *types.MyUser) interface{} {
+		"domainsAndUser": func(dGh string, dJira string, u *types.MyUser) interface{} {
 			return &struct {
-				D string
-				U *types.MyUser
-			}{D: d, U: u}
+				Dgh   string
+				Djira string
+				U     *types.MyUser
+			}{Dgh: dGh, Djira: dJira, U: u}
 		},
-		"domainAndIssueMap": func(d string, m map[types.RepoId][]types.MyIssue) interface{} {
+		"domainAndCommitMap": func(dGh string, m map[types.RepoId][]*types.MyCommit) interface{} {
 			return &struct {
-				D string
-				M map[types.RepoId][]types.MyIssue
-			}{D: d, M: m}
+				Dgh string
+				M   map[types.RepoId][]*types.MyCommit
+			}{Dgh: dGh, M: m}
 		},
-		"domainAndCommitMap": func(d string, m map[types.RepoId][]*types.MyCommit) interface{} {
-			return &struct {
-				D string
-				M map[types.RepoId][]*types.MyCommit
-			}{D: d, M: m}
+		"domainAndRepo": func(dGh string, rid types.RepoId) interface{} {
+			return &DomainAndRepo{
+				Dgh: dGh,
+				Rid: rid,
+			}
 		},
-		"domainAndRepo": func(d string, rid types.RepoId) interface{} {
+		"domainAndOrgs": func(dGh string, o []types.MyGhOrg) interface{} {
 			return &struct {
-				D   string
-				Rid types.RepoId
-			}{D: d, Rid: rid}
-		},
-		"domainAndOrgs": func(d string, o []types.MyOrg) interface{} {
-			return &struct {
-				D    string
-				Orgs []types.MyOrg
-			}{D: d, Orgs: o}
+				Dgh    string
+				GhOrgs []types.MyGhOrg
+			}{Dgh: dGh, GhOrgs: o}
 		},
 	}
 }
 
-func labeledCommitMap(l string, d string, m map[types.RepoId][]*types.MyCommit) interface{} {
+func labeledCommitMap(l string, dGh string, m map[types.RepoId][]*types.MyCommit) interface{} {
 	return &struct {
 		Label string
-		D     string
+		Dgh   string
 		M     map[types.RepoId][]*types.MyCommit
-	}{Label: l, D: d, M: m}
+	}{Label: l, Dgh: dGh, M: m}
 }
 
-func labeledIssueMap(l string, d string, m map[types.RepoId][]types.MyIssue) interface{} {
+func labeledIssueSet(l string, iSet *types.IssueSet) interface{} {
 	return &struct {
 		Label string
-		D     string
-		M     map[types.RepoId][]types.MyIssue
-	}{Label: l, D: d, M: m}
+		ISet  *types.IssueSet
+	}{Label: l, ISet: iSet}
 }
 
 const (
@@ -101,7 +102,10 @@ const (
 }
 .issueMap {
   margin-left: 20px;
-  padding: 10px;
+  margin-top: 1px;
+  padding-left: 10px;
+  padding-top: 0px;
+  padding-bottom: 2px;
   background-color: #F8F8FF;
 }
 .userData {
@@ -118,7 +122,7 @@ const (
 	tmplHtmlNameRepoLink = "tmplHtmlRepoLink"
 	tmplHtmlBodyRepoLink = `
 {{define "` + tmplHtmlNameRepoLink + `" -}}
-<a href="https:{{.D}}/{{.Rid}}"> {{.Rid}} </a>
+<a href="https://{{.HRef}}"> {{.Rid}} </a>
 {{- end}}
 `
 	tmplHtmlNameCount = "tmplHtmlNameCount"
@@ -127,7 +131,6 @@ const (
 {{if bigEnough .}} <span class="count"> ({{.}}) </span> {{end -}}
 {{- end}}
 `
-
 	tmplHtmlNameIssue = "tmplHtmlNameIssue"
 	tmplHtmlBodyIssue = `
 {{define "` + tmplHtmlNameIssue + `" -}}
@@ -144,12 +147,12 @@ const (
 &nbsp; {{.MessageFirstLine}}
 {{- end}}
 `
-	tmplHtmlNameRepoToIssueMap = "tmplHtmlNameRepoToIssueMap"
-	tmplHtmlBodyRepoToIssueMap = `
-{{define "` + tmplHtmlNameRepoToIssueMap + `" -}}
+	tmplHtmlNameIssueSet = "tmplHtmlNameIssueSet"
+	tmplHtmlBodyIssueSet = `
+{{define "` + tmplHtmlNameIssueSet + `" -}}
 <div class="issueMap">
-{{range $repo, $list := .M -}}
-<h4> {{template "` + tmplHtmlNameRepoLink + `" domainAndRepo $.D $repo}}  {{template "` + tmplHtmlNameCount + `" len $list}}</h4>
+{{range $repo, $list := .Groups -}}
+<h4> {{template "` + tmplHtmlNameRepoLink + `" domainAndRepo $.Domain $repo}}  {{template "` + tmplHtmlNameCount + `" len $list}}</h4>
 {{range $i, $issue := $list }}
 <div class="oneIssue"> {{template "` + tmplHtmlNameIssue + `" $issue}} </div>
 {{- end}}
@@ -162,7 +165,7 @@ const (
 {{define "` + tmplHtmlNameRepoToCommitMap + `" -}}
 <div class="issueMap">
 {{range $repo, $list := .M -}}
-<h4> {{template "` + tmplHtmlNameRepoLink + `" domainAndRepo $.D $repo}} {{template "` + tmplHtmlNameCount + `" len $list}}</h4>
+<h4> {{template "` + tmplHtmlNameRepoLink + `" domainAndRepo $.Dgh $repo}} {{template "` + tmplHtmlNameCount + `" len $list}}</h4>
 {{range $i, $issue := $list }}
 <div class="oneIssue"> {{template "` + tmplHtmlNameCommit + `" $issue}} </div>
 {{- end}}
@@ -171,14 +174,14 @@ const (
 {{- end}}
 `
 
-	tmplHtmlNameLabeledIssueMap = "tmplHtmlNameLabeledIssueMap"
-	tmplHtmlBodyLabeledIssueMap = `
-{{define "` + tmplHtmlNameLabeledIssueMap + `" -}}
-{{if .M -}}
-<h3> {{.Label}} {{template "` + tmplHtmlNameCount + `" (mapTotalIssues .M)}}: </h3>
-{{template "` + tmplHtmlNameRepoToIssueMap + `" (domainAndIssueMap .D .M)}}
-{{- else -}}
+	tmplHtmlNameLabeledIssueSet = "tmplHtmlNameLabeledIssueSet"
+	tmplHtmlBodyLabeledIssueSet = `
+{{define "` + tmplHtmlNameLabeledIssueSet + `" -}}
+{{if (or (eq .ISet nil) .ISet.IsEmpty) -}}
 <h3> No {{.Label}} </h3>
+{{- else -}}
+<h3> {{.Label}} {{template "` + tmplHtmlNameCount + `" .ISet.Count}}</h3>
+{{template "` + tmplHtmlNameIssueSet + `" .ISet}}
 {{- end}}
 {{- end}}
 `
@@ -186,8 +189,8 @@ const (
 	tmplHtmlBodyLabeledCommitMap = `
 {{define "` + tmplHtmlNameLabeledCommitMap + `" -}}
 {{if .M -}}
-<h3> {{.Label}} {{template "` + tmplHtmlNameCount + `" (mapTotalCommits .M)}}: </h3>
-{{template "` + tmplHtmlNameRepoToCommitMap + `" (domainAndCommitMap .D .M)}}
+<h3> {{.Label}} {{template "` + tmplHtmlNameCount + `" (mapTotalCommits .M)}} </h3>
+{{template "` + tmplHtmlNameRepoToCommitMap + `" (domainAndCommitMap .Dgh .M)}}
 {{- else -}}
 <h3> No {{.Label}} </h3>
 {{- end}}
@@ -196,10 +199,10 @@ const (
 	tmplHtmlNameOrganizations = "tmplHtmlNameOrganizations"
 	tmplHtmlBodyOrganizations = `
 {{define "` + tmplHtmlNameOrganizations + `" -}}
-<h3> Organizations </h3>
+<h3> Github Organizations </h3>
 <ul>
-{{range .Orgs }}<li>
-<a href="https://{{$.D}}/{{.Login}}"> {{if .Name}}{{.Name}} &nbsp; {{end}} {{.Login}} </a>
+{{range .GhOrgs }}<li>
+<a href="https://{{$.Dgh}}/{{.Login}}"> {{if .Name}}{{.Name}} &nbsp; {{end}} {{.Login}} </a>
 </li>
 {{end}}
 </ul>
@@ -210,15 +213,16 @@ const (
 {{define "` + tmplHtmlNameUser + `" -}}
 <h2> {{.U.Name}} (<em>{{if .U.Email}}{{.U.Email}}{{else}}{{.U.Login}}{{end}}</em>)</h2>
 <div class="userData">
-{{if .U.Orgs}}
-  {{template "` + tmplHtmlNameOrganizations + `" domainAndOrgs .D .U.Orgs}}
+{{if .U.GhOrgs}}
+  {{template "` + tmplHtmlNameOrganizations + `" domainAndOrgs .Dgh .U.GhOrgs}}
 {{else}}
   <h3> no organizations </h3>
 {{end}}
-{{template "` + tmplHtmlNameLabeledIssueMap + `" (labeledIssueMap "Issues Created" .D .U.IssuesCreated)}}
-{{template "` + tmplHtmlNameLabeledIssueMap + `" (labeledIssueMap "Issues Closed" .D .U.IssuesClosed)}}
-{{template "` + tmplHtmlNameLabeledIssueMap + `" (labeledIssueMap "PRs Reviewed" .D .U.PrsReviewed)}}
-{{template "` + tmplHtmlNameLabeledCommitMap + `" (labeledCommitMap "Commits" .D .U.Commits)}}
+{{template "` + tmplHtmlNameLabeledIssueSet + `" (labeledIssueSet "Issues Created" .U.IssuesCreated)}}
+{{template "` + tmplHtmlNameLabeledIssueSet + `" (labeledIssueSet "Issues Commented" .U.IssuesCommented)}}
+{{template "` + tmplHtmlNameLabeledIssueSet + `" (labeledIssueSet "Issues Closed" .U.IssuesClosed)}}
+{{template "` + tmplHtmlNameLabeledIssueSet + `" (labeledIssueSet "PRs Reviewed" .U.PrsReviewed)}}
+{{template "` + tmplHtmlNameLabeledCommitMap + `" (labeledCommitMap "Commits" .Dgh .U.Commits)}}
 </div>
 <hr>
 {{end}}
@@ -230,14 +234,14 @@ const (
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>{{if .Title}}{{.Title}}{{else}}Activity at {{.Domain}}{{end}}</title>` +
+    <title>{{if .Title}}{{.Title}}{{else}}Activity at {{.DomainGh}}{{end}}</title>` +
 		cssStyle + `
   </head>
   <body>
     <h1>{{.Title}}</h1>
     <p><em> {{ prettyDateRange .Dr }} </em></p>
     {{range .Users -}}
-      <div>{{ template "` + tmplHtmlNameUser + `" (domainAndUser $.Domain .) -}}</div>
+      <div>{{ template "` + tmplHtmlNameUser + `" (domainsAndUser $.DomainGh $.DomainJira .) -}}</div>
     {{- else -}}
       <p><strong> no users </strong></p>
     {{- end}}
@@ -252,8 +256,8 @@ func makeHtmlTemplate() *template.Template {
 		template.New("main").Funcs(makeFuncMap()).Parse(
 			tmplHtmlBodyRepoLink + tmplHtmlBodyCount +
 				tmplHtmlBodyIssue + tmplHtmlBodyCommit + tmplHtmlBodyOrganizations +
-				tmplHtmlBodyRepoToIssueMap + tmplHtmlBodyRepoToCommitMap +
-				tmplHtmlBodyLabeledIssueMap + tmplHtmlBodyLabeledCommitMap +
+				tmplHtmlBodyIssueSet + tmplHtmlBodyRepoToCommitMap +
+				tmplHtmlBodyLabeledIssueSet + tmplHtmlBodyLabeledCommitMap +
 				tmplHtmlBodyUser + tmplHtmlBodySnipsMain))
 }
 
@@ -269,10 +273,10 @@ func WriteHtmlCommit(w io.Writer, c *types.MyCommit) error {
 	return makeHtmlTemplate().ExecuteTemplate(w, tmplHtmlNameCommit, c)
 }
 
-func WriteHtmlLabeledIssueMap(w io.Writer, l string, m map[types.RepoId][]types.MyIssue) error {
-	return makeHtmlTemplate().ExecuteTemplate(w, tmplHtmlNameLabeledIssueMap, labeledIssueMap(l, "github.com", m))
+func WriteHtmlLabeledIssueSet(w io.Writer, l string, is *types.IssueSet) error {
+	return makeHtmlTemplate().ExecuteTemplate(w, tmplHtmlNameLabeledIssueSet, labeledIssueSet(l, is))
 }
 
 func WriteHtmlLabeledCommitMap(w io.Writer, l string, m map[types.RepoId][]*types.MyCommit) error {
-	return makeHtmlTemplate().ExecuteTemplate(w, tmplHtmlNameLabeledCommitMap, labeledCommitMap(l, "hoser.com", m))
+	return makeHtmlTemplate().ExecuteTemplate(w, tmplHtmlNameLabeledCommitMap, labeledCommitMap(l, "hoser.github.com", m))
 }

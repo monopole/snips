@@ -6,23 +6,25 @@ import (
 
 type RepoId struct {
 	Org  string
-	Repo string
+	Name string
 }
 
 func (id RepoId) String() string {
-	return id.Org + "/" + id.Repo
+	return id.Org + "/" + id.Name
 }
 
 func (id RepoId) Equals(other RepoId) bool {
-	return id.Org == other.Org && id.Repo == other.Repo
+	return id.Org == other.Org && id.Name == other.Name
 }
 
-type MyOrg struct {
+// MyGhOrg is a GitHub Organization.
+type MyGhOrg struct {
 	Name  string
 	Login string
 }
 
-// MyIssue holds an issue or a pull request, since in GitHub those are the same at a high level.
+// MyIssue holds an issue or a pull request.
+// In GitHub, at a high level, an issue and a pull request has the same representation.
 type MyIssue struct {
 	RepoId  RepoId
 	Number  int
@@ -41,22 +43,40 @@ type MyCommit struct {
 	Pr               *MyIssue
 }
 
+type IssueSet struct {
+	Domain string
+	Groups map[RepoId][]MyIssue
+}
+
+func (is *IssueSet) Count() int {
+	c := 0
+	for _, v := range is.Groups {
+		c += len(v)
+	}
+	return c
+}
+
+func (is *IssueSet) IsEmpty() bool {
+	return is.Count() == 0
+}
+
 type MyUser struct {
 	Name            string
 	Company         string
 	Login           string
 	Email           string
-	Orgs            []MyOrg
-	IssuesCreated   map[RepoId][]MyIssue
-	IssuesClosed    map[RepoId][]MyIssue
-	IssuesCommented map[RepoId][]MyIssue
-	PrsReviewed     map[RepoId][]MyIssue
+	GhOrgs          []MyGhOrg
+	IssuesCreated   *IssueSet
+	IssuesClosed    *IssueSet
+	IssuesCommented *IssueSet
+	PrsReviewed     *IssueSet
 	Commits         map[RepoId][]*MyCommit
 }
 
 type Report struct {
-	Title  string
-	Domain string
-	Dr     *DayRange
-	Users  []*MyUser
+	Title      string
+	DomainGh   string
+	DomainJira string
+	Dr         *DayRange
+	Users      []*MyUser
 }

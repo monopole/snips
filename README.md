@@ -5,14 +5,6 @@
 [pandoc]: https://pandoc.org/
 [`go`]: https://go.dev
 
-
-<!--
- TODO
-
- * Add jira access via https://github.com/ctreminiom/go-atlassian
--->
-
-
 # snips
 
 Reports GitHub activity about specific users over a common period of days.
@@ -40,7 +32,7 @@ for several users during September 2020:
 
 ```
 snips \
-    --domain github.acmecorp.com \
+    --gh-domain github.acmecorp.com \
     --day-start 2020-Sep-01 \
     --day-count 30 \
      alice bob charlie > /tmp/snips.html
@@ -48,10 +40,10 @@ snips \
 
 The time period is measured in days.
 It can be specified using any two of the
-three `day` flags:
+following flags:
 `--day-start`, `--day-end`, and `--day-count`.
-The default day `count` is _14_ (two weeks),
-and the default day `end` is _today_.
+The default _day-end_ is _today_.
+The default _day-count_ is _14_.
 
 ## Installation
 
@@ -64,24 +56,24 @@ Enter:
 go install github.com/monopole/snips@latest
 ```
 
-## Authentication
+## GitHub Authentication
 
-An [OAuth device flow] for the given `--domain` is triggered when either
+An [OAuth device flow] for the given `--gh-domain` is triggered when either
 
- * the `--get-gh-token` flag is present,
+ * the `--just-get-gh-token` flag is present,
  * or both the shell variable `GH_TOKEN` and the `--gh-token` override flag are empty.
 
-Use this
+This command
 ```
-export GH_TOKEN=$(snips --domain github.acmecorp.com --get-gh-token)
+export GH_TOKEN=$(snips --gh-domain github.acmecorp.com --just-get-gh-token)
 ```
-to login once, then use `snips` multiple times.
+sets `GH_TOKEN`, allowing subsequent `snips` usage to skip prompting
+for a password.
 
 If the OAuth flow fails for some reason (e.g.
-this program has no clientId for the `--domain` being used),
+this program has no clientId for the `--gh-domain` being used),
 then try the instructions for [obtaining a classic token].
-
-In this flow, select the scopes:
+In that flow, select these scopes:
 ```
  [x] admin/read (to see organization membership)
  [x] repo (to see pull requests)

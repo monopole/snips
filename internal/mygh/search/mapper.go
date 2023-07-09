@@ -1,4 +1,4 @@
-package query
+package search
 
 import (
 	"fmt"
@@ -25,10 +25,10 @@ func yankRepoId(raw HasUrl) (types.RepoId, error) {
 	}
 	return types.RepoId{
 		Org:  path[1],
-		Repo: path[2],
+		Name: path[2],
 	}, nil
-
 }
+
 func makeMapOfRepoToIssueList(issues []*github.Issue) (map[types.RepoId][]types.MyIssue, error) {
 	rawMap := make(map[types.RepoId][]*github.Issue)
 	seen := make(map[int64]*github.Issue)
@@ -44,11 +44,11 @@ func makeMapOfRepoToIssueList(issues []*github.Issue) (map[types.RepoId][]types.
 		rawMap[id] = append(rawMap[id], issue)
 	}
 	result := make(map[types.RepoId][]types.MyIssue)
-	for id, v := range rawMap {
-		lst := make([]types.MyIssue, len(v))
-		v = sortIssuesByDateOfUpdate(v)
-		for i := range v {
-			x := v[i]
+	for id, ghIssues := range rawMap {
+		lst := make([]types.MyIssue, len(ghIssues))
+		ghIssues = sortIssuesByDateOfUpdate(ghIssues)
+		for i := range ghIssues {
+			x := ghIssues[i]
 			lst[i] = types.MyIssue{
 				RepoId:  id,
 				Number:  x.GetNumber(),
@@ -77,9 +77,9 @@ func makeMapOfRepoToCommitList(commits []*github.CommitResult) (map[types.RepoId
 		rawMap[n] = append(rawMap[n], commit)
 	}
 	result := make(map[types.RepoId][]*types.MyCommit)
-	for id, v := range rawMap {
-		lst := make([]*types.MyCommit, len(v))
-		for i, x := range sortCommitsByDateOfCommit(v) {
+	for id, ghCommits := range rawMap {
+		lst := make([]*types.MyCommit, len(ghCommits))
+		for i, x := range sortCommitsByDateOfCommit(ghCommits) {
 			lst[i] = &types.MyCommit{
 				RepoId:           id,
 				Sha:              x.GetCommit().GetSHA(),

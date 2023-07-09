@@ -2,19 +2,20 @@ package report_test
 
 import (
 	"bytes"
+	"testing"
+	"time"
+
 	. "github.com/monopole/snips/internal/report"
 	"github.com/monopole/snips/internal/types"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 const (
-	urlPr1 = "https://github.tesla.com/design-technology/3dx/pull/636"
-	urlPr2 = "https://github.tesla.com/design-technology/argocd-manifests/pull/2555"
+	urlPr1 = "https://github.acmecorp.com/design-technology/3dx/pull/636"
+	urlPr2 = "https://github.acmecorp.com/design-technology/argocd-manifests/pull/2555"
 
-	urlCommit1 = "https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578"
-	urlCommit2 = "https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/bbd9f61f0c1bb26e58641f15da872afce9f6c1ec"
+	urlCommit1 = "https://github.acmecorp.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578"
+	urlCommit2 = "https://github.acmecorp.com/design-technology/argocd-manifests/pull/2663/commits/bbd9f61f0c1bb26e58641f15da872afce9f6c1ec"
 
 	ts1 = "13 Jun 19 10:11 PST"
 	ts2 = "15 Jun 19 10:17 PST"
@@ -27,16 +28,16 @@ const (
 )
 
 var (
-	org1 = types.MyOrg{Name: orgName1, Login: "Micheal"}
-	org2 = types.MyOrg{Name: orgName2, Login: "Barton"}
+	org1 = types.MyGhOrg{Name: orgName1, Login: "Micheal"}
+	org2 = types.MyGhOrg{Name: orgName2, Login: "Barton"}
 
 	repoId1 = types.RepoId{
 		Org:  orgName1,
-		Repo: "marsToilet",
+		Name: "marsToilet",
 	}
 	repoId2 = types.RepoId{
 		Org:  orgName2,
-		Repo: "jupiterToast",
+		Name: "jupiterToast",
 	}
 
 	time1, _ = time.Parse(time.RFC822, ts1)
@@ -82,7 +83,7 @@ func Test_WriteHtmlIssue(t *testing.T) {
 	}{
 		"t1": {
 			issue:  issue1,
-			result: "<code>2019-Jun-13</code> &nbsp; <a href=\"https://github.tesla.com/design-technology/3dx/pull/636\"> Fry the older bananas </a>",
+			result: "<code>2019-Jun-13</code> &nbsp; <a href=\"https://github.acmecorp.com/design-technology/3dx/pull/636\"> Fry the older bananas </a>",
 		},
 	}
 	for name, tt := range tests {
@@ -102,7 +103,7 @@ func Test_WriteHtmlCommit(t *testing.T) {
 		"t1": {
 			commit: commit1,
 			result: `<code>2019-Jun-13
-<a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578">fc25519</a> (pull/<a href="https://github.tesla.com/design-technology/3dx/pull/636">600</a>)
+<a href="https://github.acmecorp.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578">fc25519</a> (pull/<a href="https://github.acmecorp.com/design-technology/3dx/pull/636">600</a>)
 </code>
 &nbsp; Fry the older bananas`,
 		},
@@ -119,7 +120,7 @@ func Test_WriteHtmlCommit(t *testing.T) {
 func Test_WriteHtmlLabeledIssueMap(t *testing.T) {
 	tests := map[string]struct {
 		l      string
-		m      map[types.RepoId][]types.MyIssue
+		iSet   *types.IssueSet
 		result string
 	}{
 		"t1": {
@@ -128,26 +129,29 @@ func Test_WriteHtmlLabeledIssueMap(t *testing.T) {
 		},
 		"t2": {
 			l: "issues reviewed",
-			m: map[types.RepoId][]types.MyIssue{
-				repoId1: {issue1, issue2},
-				repoId2: {issue1, issue2},
+			iSet: &types.IssueSet{
+				Domain: "github.bob.com",
+				Groups: map[types.RepoId][]types.MyIssue{
+					repoId1: {issue1, issue2},
+					repoId2: {issue1, issue2},
+				},
 			},
-			result: `<h3> issues reviewed : </h3>
+			result: `<h3> issues reviewed </h3>
 <div class="issueMap">
-<h4> <a href="https:github.com/bitCoinLosers/jupiterToast"> bitCoinLosers/jupiterToast </a>  </h4>
+<h4> <a href="https://github.bob.com/bitCoinLosers/jupiterToast"> bitCoinLosers/jupiterToast </a>  </h4>
 
-<div class="oneIssue"> <code>2019-Jun-13</code> &nbsp; <a href="https://github.tesla.com/design-technology/3dx/pull/636"> Fry the older bananas </a> </div>
-<div class="oneIssue"> <code>2019-Jun-15</code> &nbsp; <a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2555"> Indemnify the cheese eaters </a> </div><h4> <a href="https:github.com/federationOfPlanets/marsToilet"> federationOfPlanets/marsToilet </a>  </h4>
+<div class="oneIssue"> <code>2019-Jun-13</code> &nbsp; <a href="https://github.acmecorp.com/design-technology/3dx/pull/636"> Fry the older bananas </a> </div>
+<div class="oneIssue"> <code>2019-Jun-15</code> &nbsp; <a href="https://github.acmecorp.com/design-technology/argocd-manifests/pull/2555"> Indemnify the cheese eaters </a> </div><h4> <a href="https://github.bob.com/federationOfPlanets/marsToilet"> federationOfPlanets/marsToilet </a>  </h4>
 
-<div class="oneIssue"> <code>2019-Jun-13</code> &nbsp; <a href="https://github.tesla.com/design-technology/3dx/pull/636"> Fry the older bananas </a> </div>
-<div class="oneIssue"> <code>2019-Jun-15</code> &nbsp; <a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2555"> Indemnify the cheese eaters </a> </div>
+<div class="oneIssue"> <code>2019-Jun-13</code> &nbsp; <a href="https://github.acmecorp.com/design-technology/3dx/pull/636"> Fry the older bananas </a> </div>
+<div class="oneIssue"> <code>2019-Jun-15</code> &nbsp; <a href="https://github.acmecorp.com/design-technology/argocd-manifests/pull/2555"> Indemnify the cheese eaters </a> </div>
 </div>`,
 		},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			var b bytes.Buffer
-			WriteHtmlLabeledIssueMap(&b, tt.l, tt.m)
+			WriteHtmlLabeledIssueSet(&b, tt.l, tt.iSet)
 			assert.Equal(t, tt.result, b.String())
 		})
 	}
@@ -168,16 +172,16 @@ func Test_WriteHtmlLabeledCommitMap(t *testing.T) {
 			m: map[types.RepoId][]*types.MyCommit{
 				repoId1: {&commit1, &commit2},
 			},
-			result: `<h3> commits : </h3>
+			result: `<h3> commits  </h3>
 <div class="issueMap">
-<h4> <a href="https:hoser.com/federationOfPlanets/marsToilet"> federationOfPlanets/marsToilet </a> </h4>
+<h4> <a href="https://hoser.github.com/federationOfPlanets/marsToilet"> federationOfPlanets/marsToilet </a> </h4>
 
 <div class="oneIssue"> <code>2019-Jun-13
-<a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578">fc25519</a> (pull/<a href="https://github.tesla.com/design-technology/3dx/pull/636">600</a>)
+<a href="https://github.acmecorp.com/design-technology/argocd-manifests/pull/2663/commits/fc25519428f4f91813d5a8c324c73ada2d94b578">fc25519</a> (pull/<a href="https://github.acmecorp.com/design-technology/3dx/pull/636">600</a>)
 </code>
 &nbsp; Fry the older bananas </div>
 <div class="oneIssue"> <code>2019-Jun-13
-<a href="https://github.tesla.com/design-technology/argocd-manifests/pull/2663/commits/bbd9f61f0c1bb26e58641f15da872afce9f6c1ec">bbd9f61</a>
+<a href="https://github.acmecorp.com/design-technology/argocd-manifests/pull/2663/commits/bbd9f61f0c1bb26e58641f15da872afce9f6c1ec">bbd9f61</a>
 </code>
 &nbsp; Fry the older bananas </div>
 </div>`,
@@ -199,14 +203,17 @@ func Test_WriteHtmlReport(t *testing.T) {
 	}{
 		"t1": {
 			dude: types.MyUser{
-				Name:    "Bobby Bobface",
-				Company: "TESLA",
+				Name:    "Bobby McBobface",
+				Company: "ACME CORP",
 				Login:   "bobby",
-				Email:   "bob@tesla.com",
-				Orgs:    []types.MyOrg{org1, org2},
-				IssuesCreated: map[types.RepoId][]types.MyIssue{
-					repoId1: {issue1, issue2},
-					repoId2: {issue1, issue2},
+				Email:   "bob@acmecorp.com",
+				GhOrgs:  []types.MyGhOrg{org1, org2},
+				IssuesCreated: &types.IssueSet{
+					Domain: "hoser",
+					Groups: map[types.RepoId][]types.MyIssue{
+						repoId1: {issue1, issue2},
+						repoId2: {issue1, issue2},
+					},
 				},
 				IssuesClosed:    nil,
 				IssuesCommented: nil,
