@@ -136,9 +136,13 @@ func Test_WriteHtmlLabeledIssueMap(t *testing.T) {
 					repoId2: {issue1, issue2},
 				},
 			},
-			result: `<h3> issues reviewed </h3>
+			result: `<h3> issues reviewed
+<span class="itemCount">(4 issues in 2 repos)</span>
+</h3>
 <div class="issueMap">
-<h4> <a href="https://github.bob.com/bitCoinLosers/jupiterToast"> bitCoinLosers/jupiterToast </a>  </h4>
+<h4> <a href="https://github.bob.com/bitCoinLosers/jupiterToast"> bitCoinLosers/jupiterToast </a> 
+<span class="itemCount">(2 issues)</span>
+</h4>
 
 <div class="oneIssue"> <code>2019-Jun-13</code> &nbsp; <a href="https://github.acmecorp.com/design-technology/3dx/pull/636"> Fry the older bananas </a> </div>
 <div class="oneIssue"> <code>2019-Jun-15</code> &nbsp; <a href="https://github.acmecorp.com/design-technology/argocd-manifests/pull/2555"> Indemnify the cheese eaters </a> </div><h4> <a href="https://github.bob.com/federationOfPlanets/marsToilet"> federationOfPlanets/marsToilet </a>  </h4>

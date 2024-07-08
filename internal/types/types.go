@@ -60,6 +60,10 @@ func (is *IssueSet) IsEmpty() bool {
 	return is.Count() == 0
 }
 
+func (is *IssueSet) RepoCount() int {
+	return len(is.Groups)
+}
+
 type MyUser struct {
 	Name            string
 	Company         string

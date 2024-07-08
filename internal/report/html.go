@@ -58,6 +58,12 @@ func makeFuncMap() map[string]interface{} {
 				U     *types.MyUser
 			}{Dgh: dGh, Djira: dJira, U: u}
 		},
+		"countAndItemName": func(c int, n string) interface{} {
+			return &struct {
+				C int
+				N string
+			}{C: c, N: n}
+		},
 		"domainAndCommitMap": func(dGh string, m map[types.RepoId][]*types.MyCommit) interface{} {
 			return &struct {
 				Dgh string
@@ -112,7 +118,8 @@ const (
   margin-left: 10px;
   padding-bottom: 10px;
 }
-.count {
+.itemCount {
+  padding-left: 1em;
   color: gray;
   font-style: italic;
 }
@@ -125,12 +132,14 @@ const (
 <a href="https://{{.HRef}}"> {{.Rid}} </a>
 {{- end}}
 `
-	tmplHtmlNameCount = "tmplHtmlNameCount"
-	tmplHtmlBodyCount = `
-{{define "` + tmplHtmlNameCount + `" -}}
-{{if bigEnough .}} <span class="count"> ({{.}}) </span> {{end -}}
+	tmplHtmlNameItemCount = "tmplHtmlNameItemCount"
+	tmplHtmlBodyItemCount = `
+{{define "` + tmplHtmlNameItemCount + `" -}}
+<span class="itemCount"> ({{.C}} {{.N}}) </span>
 {{- end}}
 `
+	//{{if bigEnough .}} <span class="itemCount"> ({{.}}) </span> {{end -}}
+
 	tmplHtmlNameIssue = "tmplHtmlNameIssue"
 	tmplHtmlBodyIssue = `
 {{define "` + tmplHtmlNameIssue + `" -}}
@@ -152,7 +161,9 @@ const (
 {{define "` + tmplHtmlNameIssueSet + `" -}}
 <div class="issueMap">
 {{range $repo, $list := .Groups -}}
-<h4> {{template "` + tmplHtmlNameRepoLink + `" domainAndRepo $.Domain $repo}}  {{template "` + tmplHtmlNameCount + `" len $list}}</h4>
+<h4> {{template "` + tmplHtmlNameRepoLink + `" domainAndRepo $.Domain $repo}} 
+<span class="itemCount">({{len $list}} issues)</span>
+</h4>
 {{range $i, $issue := $list }}
 <div class="oneIssue"> {{template "` + tmplHtmlNameIssue + `" $issue}} </div>
 {{- end}}
@@ -165,7 +176,9 @@ const (
 {{define "` + tmplHtmlNameRepoToCommitMap + `" -}}
 <div class="issueMap">
 {{range $repo, $list := .M -}}
-<h4> {{template "` + tmplHtmlNameRepoLink + `" domainAndRepo $.Dgh $repo}} {{template "` + tmplHtmlNameCount + `" len $list}}</h4>
+<h4> {{template "` + tmplHtmlNameRepoLink + `" domainAndRepo $.Dgh $repo}} 
+<span class="itemCount">({{len $list}} commits)</span>
+</h4>
 {{range $i, $issue := $list }}
 <div class="oneIssue"> {{template "` + tmplHtmlNameCommit + `" $issue}} </div>
 {{- end}}
@@ -180,7 +193,9 @@ const (
 {{if (or (eq .ISet nil) .ISet.IsEmpty) -}}
 <h3> No {{.Label}} </h3>
 {{- else -}}
-<h3> {{.Label}} {{template "` + tmplHtmlNameCount + `" .ISet.Count}}</h3>
+<h3> {{.Label}}
+<span class="itemCount">({{- .ISet.Count}} issues in {{.ISet.RepoCount}} repos)</span>
+</h3>
 {{template "` + tmplHtmlNameIssueSet + `" .ISet}}
 {{- end}}
 {{- end}}
@@ -189,7 +204,9 @@ const (
 	tmplHtmlBodyLabeledCommitMap = `
 {{define "` + tmplHtmlNameLabeledCommitMap + `" -}}
 {{if .M -}}
-<h3> {{.Label}} {{template "` + tmplHtmlNameCount + `" (mapTotalCommits .M)}} </h3>
+<h3> {{.Label}} 
+<span class="itemCount">({{mapTotalCommits .M}} commits to {{len .M}} repos)</span>
+</h3>
 {{template "` + tmplHtmlNameRepoToCommitMap + `" (domainAndCommitMap .Dgh .M)}}
 {{- else -}}
 <h3> No {{.Label}} </h3>
@@ -254,11 +271,17 @@ const (
 func makeHtmlTemplate() *template.Template {
 	return template.Must(
 		template.New("main").Funcs(makeFuncMap()).Parse(
-			tmplHtmlBodyRepoLink + tmplHtmlBodyCount +
-				tmplHtmlBodyIssue + tmplHtmlBodyCommit + tmplHtmlBodyOrganizations +
-				tmplHtmlBodyIssueSet + tmplHtmlBodyRepoToCommitMap +
-				tmplHtmlBodyLabeledIssueSet + tmplHtmlBodyLabeledCommitMap +
-				tmplHtmlBodyUser + tmplHtmlBodySnipsMain))
+			tmplHtmlBodyRepoLink +
+				tmplHtmlBodyItemCount +
+				tmplHtmlBodyIssue +
+				tmplHtmlBodyCommit +
+				tmplHtmlBodyOrganizations +
+				tmplHtmlBodyIssueSet +
+				tmplHtmlBodyRepoToCommitMap +
+				tmplHtmlBodyLabeledIssueSet +
+				tmplHtmlBodyLabeledCommitMap +
+				tmplHtmlBodyUser +
+				tmplHtmlBodySnipsMain))
 }
 
 func WriteHtmlReport(w io.Writer, r *types.Report) error {

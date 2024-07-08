@@ -37,8 +37,8 @@ type ServiceArgs struct {
 
 // Args holds clean arguments from the command line.
 type Args struct {
-	// User is a slice of usernames to include in the given report.
-	User []string
+	// UserNames is a slice of usernames to include in the given report.
+	UserNames []string
 	// Title is the title for the given report.
 	Title     string
 	DateRange *types.DayRange
@@ -52,6 +52,9 @@ type Args struct {
 	JustGetGhToken bool
 	// Markdown means emit markdown rather than HTML in the report.
 	Markdown bool
+	// TestRenderOnly means generate fake data for rendering rather than
+	// making calls to github or jira.
+	TestRenderOnly bool
 }
 
 // ParseArgs parses and validates arguments from the command line.
@@ -72,6 +75,7 @@ func ParseArgs() (*Args, error) {
 	flag.StringVar(&result.CaPath, "ca-path", "", "local path to cert file for TLS in oauth dance")
 
 	flag.BoolVar(&result.JustGetGhToken, "just-get-gh-token", false, "force github login, return the gh-token")
+	flag.BoolVar(&result.TestRenderOnly, "test", false, "generate test data instead of talking to github or jira")
 	flag.StringVar(&result.Gh.Domain, "gh-domain", GithubPublic, "the github domain")
 	flag.StringVar(&result.Gh.ClientId, "gh-client-id", "", "the oauth clientID from github")
 	flag.StringVar(&result.Gh.Token, flagGhToken, "",
@@ -87,14 +91,14 @@ func ParseArgs() (*Args, error) {
 	flag.Parse()
 
 	// All the arguments should be usernames.
-	result.User = flag.Args()
-	if len(result.User) == 0 && !result.JustGetGhToken {
+	result.UserNames = flag.Args()
+	if !result.TestRenderOnly && len(result.UserNames) == 0 && !result.JustGetGhToken {
 		return nil, fmt.Errorf("no users specified")
 	}
 
 	if result.Jira.Token == "" {
 		result.Jira.Token = os.Getenv(envJiraToken)
-		if result.Jira.Token == "" {
+		if !result.TestRenderOnly && result.Jira.Token == "" {
 			fmt.Fprintf(
 				os.Stderr,
 				"To include issue data from Jira, set env var %s to a personal access token value obtained from https://%s/secure/ViewProfile.jspa?%s\n",
@@ -110,7 +114,7 @@ func ParseArgs() (*Args, error) {
 		// If Gh.Token still empty, user will be prompted.
 	}
 
-	if result.Gh.ClientId == "" {
+	if !result.TestRenderOnly && result.Gh.ClientId == "" {
 		result.Gh.ClientId, err = determineClientIdFromDomain(result.Gh.Domain)
 		if err != nil {
 			return nil, err
