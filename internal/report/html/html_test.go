@@ -1,11 +1,11 @@
-package report_test
+package html_test
 
 import (
 	"bytes"
+	. "github.com/monopole/snips/internal/report/html"
 	"testing"
 	"time"
 
-	. "github.com/monopole/snips/internal/report"
 	"github.com/monopole/snips/internal/types"
 	"github.com/stretchr/testify/assert"
 )

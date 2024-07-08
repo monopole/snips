@@ -1,8 +1,8 @@
-package report_test
+package md_test
 
 import (
 	"bytes"
-	. "github.com/monopole/snips/internal/report"
+	. "github.com/monopole/snips/internal/report/md"
 	"github.com/monopole/snips/internal/types"
 	"github.com/stretchr/testify/assert"
 	"testing"

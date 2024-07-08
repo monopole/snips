@@ -13,31 +13,28 @@ func MakeSliceOfFakeUserData() []*types.MyUser {
 }
 
 func makeFakeUserData() *types.MyUser {
-	user := types.MyUser{
-		Name:            "Wile E Coyote",
-		Company:         "Acme Corp.",
-		Login:           "wiley",
-		Email:           "wilye@acmecorp.com",
-		GhOrgs:          []types.MyGhOrg{{Name: "wHacker", Login: "wileyGH"}},
-		IssuesCreated:   nil,
-		IssuesClosed:    nil,
-		IssuesCommented: nil,
-		PrsReviewed:     nil,
-		Commits:         nil,
-	}
 	repos := makeRandomRepoIds(6, 12)
-	_ = makeRandomRepoIdGenerator(repos)
-	user.IssuesCreated = makeIssueSet(
-		makeRandomRepoIdGenerator(repos), 3+rand.Intn(5))
-	user.IssuesClosed = makeIssueSet(
-		makeRandomRepoIdGenerator(repos), 3+rand.Intn(2))
-	user.IssuesCommented = makeIssueSet(
-		makeRandomRepoIdGenerator(repos), 3+rand.Intn(8))
-	user.PrsReviewed = makeIssueSet(
-		makeRandomRepoIdGenerator(repos), 3+rand.Intn(8))
-	user.Commits = makeCommitMap(
-		makeRandomRepoIdGenerator(repos), 3+rand.Intn(8))
-	return &user
+	return &types.MyUser{
+		Name:    "Wile E Coyote",
+		Company: "Acme Corp.",
+		Login:   "wcoyote",
+		Email:   "wcoyote@acme.com",
+		GhOrgs: []types.MyGhOrg{
+			{Name: "tooFast", Login: "roadrunner"},
+			{Name: "tooHigh", Login: "cliff"},
+			{Name: "tooHeavy", Login: "anvil"},
+		},
+		IssuesCreated: makeIssueSet(
+			makeRandomRepoIdGenerator(repos), 3+rand.Intn(5)),
+		IssuesClosed: makeIssueSet(
+			makeRandomRepoIdGenerator(repos), 3+rand.Intn(2)),
+		IssuesCommented: makeIssueSet(
+			makeRandomRepoIdGenerator(repos), 3+rand.Intn(8)),
+		PrsReviewed: makeIssueSet(
+			makeRandomRepoIdGenerator(repos), 3+rand.Intn(8)),
+		Commits: makeCommitMap(
+			makeRandomRepoIdGenerator(repos), 3+rand.Intn(8)),
+	}
 }
 
 func makeCommitMap(repoIdGen *randomRepoIdGenerator, count int) map[types.RepoId][]*types.MyCommit {
@@ -110,7 +107,7 @@ func makeRandomIssue() types.MyIssue {
 		Number:  rand.Intn(10000),
 		Title:   randLorem.getOkToReUse(),
 		HtmlUrl: "http://www.example.com",
-		Updated: time.Now(),
+		Updated: time.Now().Add(randNegativeDay()),
 	}
 }
 

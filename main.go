@@ -16,7 +16,8 @@ import (
 	"github.com/monopole/snips/internal/myhttp"
 	"github.com/monopole/snips/internal/myjira"
 	"github.com/monopole/snips/internal/pgmargs"
-	"github.com/monopole/snips/internal/report"
+	"github.com/monopole/snips/internal/report/html"
+	"github.com/monopole/snips/internal/report/md"
 	"github.com/monopole/snips/internal/types"
 )
 
@@ -40,15 +41,14 @@ func main() {
 	if args.TestRenderOnly {
 		users = fake.MakeSliceOfFakeUserData()
 	} else {
-		users, err = getUserData(args)
-		if err != nil {
+		if users, err = getUserData(args); err != nil {
 			log.Fatalf(err.Error())
 		}
 	}
 
-	writeF := report.WriteHtmlReport
+	writeF := html.WriteHtmlReport
 	if args.Markdown {
-		writeF = report.WriteMdReport
+		writeF = md.WriteMdReport
 	}
 	if err = writeF(
 		os.Stdout,
