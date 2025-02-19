@@ -76,7 +76,7 @@ func getIssueNumber(id types.RepoId, raw string) (int, error) {
 		return 0, fmt.Errorf("expected something like PLM-1234, but have %q", raw)
 	}
 	if parts[0] != id.Name {
-		log.Printf(fmt.Errorf("expected %q, but got %q from issue key %s", id.Name, parts[0], raw).Error())
+		log.Fatal(fmt.Errorf("expected %q, but got %q from issue key %s", id.Name, parts[0], raw).Error())
 		// return 0, fmt.Errorf("expected %q, but got %q from issue key %s", id.Name, parts[0], raw)
 	}
 	return strconv.Atoi(parts[1])

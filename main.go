@@ -33,7 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 	if !args.TestRenderOnly && !args.JustGetGhToken && len(args.UserNames) == 0 {
-		fmt.Fprintf(os.Stderr, readMeMd)
+		_, _ = fmt.Fprintln(os.Stderr, readMeMd)
 		os.Exit(0)
 	}
 
@@ -42,7 +42,7 @@ func main() {
 		users = fake.MakeSliceOfFakeUserData()
 	} else {
 		if users, err = getUserData(args); err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err.Error())
 		}
 	}
 
@@ -59,7 +59,7 @@ func main() {
 			Dr:         args.DateRange,
 			Users:      users,
 		}); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err.Error())
 	}
 }
 

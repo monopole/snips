@@ -110,7 +110,7 @@ func TestDayRange_MakeDayRange(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			dr, err := MakeDayRange(tc.dayStart, tc.dayEnd, tc.dayCount)
 			if err != nil {
-				t.Fatalf(err.Error())
+				t.Fatal(err.Error())
 			}
 			got := dr.PrettyRange()
 			if got != tc.want {
