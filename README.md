@@ -7,7 +7,7 @@
 
 # snips
 
-Reports GitHub activity about specific users over a common period of days.
+Reports GitHub/jira activity about specific users over a common period of days.
 
 ## Usage
 
