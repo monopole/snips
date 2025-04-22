@@ -5,8 +5,8 @@ set -e
 
 # Get a "Personal Access Token" (aka bearer token) from your jira host
 # at https://issues.acmecorp.com/secure/ViewProfile.jspa
-if [ -z "$JIRA_TOKEN" ]; then
-  echo "Set JIRA_TOKEN"
+if [ -z "$JIRA_API_TOKEN" ]; then
+  echo "Set JIRA_API_TOKEN"
 fi
 
 # The following doesn't work:
@@ -37,7 +37,7 @@ echo "basic = $(echo $basic | base64 -d)"
 
 
 function authHeader {
-  echo  "Authorization: Bearer $JIRA_TOKEN"
+  echo  "Authorization: Bearer $JIRA_API_TOKEN"
 #  echo  "Authorization: Basic $basic"
 }
 

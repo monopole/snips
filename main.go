@@ -5,9 +5,6 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
-	"log"
-	"os"
-
 	"github.com/google/go-github/v52/github"
 	"github.com/monopole/snips/internal/fake"
 	"github.com/monopole/snips/internal/mygh/client"
@@ -19,6 +16,8 @@ import (
 	"github.com/monopole/snips/internal/report/html"
 	"github.com/monopole/snips/internal/report/md"
 	"github.com/monopole/snips/internal/types"
+	"log"
+	"os"
 )
 
 //go:embed README.md
@@ -91,16 +90,22 @@ func getUserData(args *pgmargs.Args) ([]*types.MyUser, error) {
 		ghCl  *github.Client
 		users []*types.MyUser
 	)
-	ghCl, err = client.MakeGhApiClient(ctx, args.Gh.Domain, args.Gh.Token)
-	if err != nil {
-		return nil, fmt.Errorf("trouble making github client: %w", err)
+	if args.SkipGh {
+		users = make([]*types.MyUser, len(args.UserNames))
+		for i, n := range args.UserNames {
+			users[i] = &types.MyUser{Name: n, Login: n}
+		}
+	} else {
+		ghCl, err = client.MakeGhApiClient(ctx, args.Gh.Domain, args.Gh.Token)
+		if err != nil {
+			return nil, fmt.Errorf("trouble making github client: %w", err)
+		}
+		users, err = search.MakeEngine(
+			ctx, ghCl, args.Gh.Domain).LookupPeeps(args.UserNames, args.DateRange)
+		if err != nil {
+			return nil, fmt.Errorf("trouble doing queries: %w", err)
+		}
 	}
-	users, err = search.MakeEngine(
-		ctx, ghCl, args.Gh.Domain).LookupPeeps(args.UserNames, args.DateRange)
-	if err != nil {
-		return nil, fmt.Errorf("trouble doing queries: %w", err)
-	}
-
 	if args.Jira.Token != "" {
 		err = myjira.MakeJiraBoss(
 			htCl, &args.Jira, args.DateRange).DoSearch(users)

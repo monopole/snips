@@ -24,7 +24,7 @@ const (
 	envGhToken  = "GH_TOKEN"
 	flagGhToken = "gh-token"
 
-	envJiraToken  = "JIRA_TOKEN"
+	envJiraToken  = "JIRA_API_TOKEN"
 	flagJiraToken = "jira-token"
 )
 
@@ -55,6 +55,8 @@ type Args struct {
 	// TestRenderOnly means generate fake data for rendering rather than
 	// making calls to github or jira.
 	TestRenderOnly bool
+	// SkipGh means don't look at GH, just do jira. awful.
+	SkipGh bool
 }
 
 // ParseArgs parses and validates arguments from the command line.
@@ -74,6 +76,7 @@ func ParseArgs() (*Args, error) {
 	flag.BoolVar(&result.Markdown, flagMarkdown, false, "emit markdown instead of HTML")
 	flag.StringVar(&result.CaPath, "ca-path", "", "local path to cert file for TLS in oauth dance")
 
+	flag.BoolVar(&result.SkipGh, "skip-gh", false, "ignore GH, just hit jira")
 	flag.BoolVar(&result.JustGetGhToken, "just-get-gh-token", false, "force github login, return the gh-token")
 	flag.BoolVar(&result.TestRenderOnly, "test", false, "generate test data instead of talking to github or jira")
 	flag.StringVar(&result.Gh.Domain, "gh-domain", GithubPublic, "the github domain")
